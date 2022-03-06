@@ -1,4 +1,4 @@
-;;; org-backlinks.el --- Org backlinks interface -*- lexical-binding: t -*-
+;;; org-backlinks.el --- Org backlinks -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2022 Bruno Cardoso
 
@@ -33,9 +33,6 @@
 
 ;;; Code:
 
-;; TODO: move helm functions to separate file
-;;       use completing-read in org-backlinks function
-(require 'helm)
 (require 'org-ql)
 
 
@@ -59,40 +56,52 @@ current heading's backlinks."
   "Prefix for searching for CUSTOM_ID."
   :type 'string)
 
+(defcustom org-backlinks-files 'org-files-list
+  "Which Org files should be searched for backlinks.
+Default values are:
+
+  'agenda          list of Org agenda files
+  'buffers         list of open Org buffers
+  'org-files-list  list of Org agenda files + open Org buffers
+
+Alternatively, this variable can be a custom list of Org files."
+  :group 'org-hop
+  :type 'sexp)
+
 
 ;;;; Variables
 
-;; TODO: move to another file
+(defvar org-backlinks-list nil
+  "List of Org headings with links to current heading.")
 
-(defvar helm-org-backlinks-source nil
-  "Helm source for Org backlinks")
-
-(defvar helm-org-backlinks-2nd-source nil
-  "Helm source for second order Org backlinks")
+(defvar org-backlinks-second-list nil
+  "List of Org headings with links to current heading's backlinks.")
 
 
 ;;;; Functions
 
+(defun org-backlinks-files ()
+  "List of Org files to search for headings."
+  (cond ((eq org-backlinks-files 'agenda)
+         (org-agenda-files))
+        ((eq org-backlinks-files 'buffers)
+         (org-buffer-list))
+        ((eq org-backlinks-files 'org-files-list)
+         (org-files-list))
+        (t
+         org-backlinks-files)))
+
 (defun org-backlinks-get-heading-info ()
   "Return Org heading info at point: heading, buffer, point, id."
-  `(:heading ,(org-format-outline-path (org-get-outline-path t t))
-    :buffer ,(buffer-name)
-    :point ,(point)
-    :id ,(or (org-entry-get (point) "CUSTOM_ID") (org-id-get))))
+  `(,(org-format-outline-path (org-get-outline-path t t))
+    ,(buffer-name)
+    ,(point)
+    ,(or (org-entry-get (point) "CUSTOM_ID") (org-id-get))))
 
 (defun org-backlinks-query (id)
   "Return the headings that link to an ID."
-  (org-ql-select (org-buffer-list) id
+  (org-ql-select (org-backlinks-files) id
     :action #'org-backlinks-get-heading-info))
-
-(defun org-backlinks-headings (headings-list)
-  "Return a list of Org headings locations."
-  (let ((headings nil))
-    (dolist (heading headings-list headings)
-      (cl-pushnew `(,(plist-get heading :heading)
-                    ,(plist-get heading :buffer)
-                    ,(plist-get heading :point))
-                  headings :test #'equal))))
 
 (defun org-backlinks-goto-heading (buffer-point)
   (interactive)
@@ -103,41 +112,34 @@ current heading's backlinks."
   (org-show-entry)
   (org-show-children))
 
-(defun org-backlinks-def-helm-sources (id)
-  (let ((backlinks (org-backlinks-query id))
-        (backlinks-2nd nil))
-    ;; remove current heading from list
-    (let ((point (point)))
-      (re-search-backward org-heading-regexp nil t)
-      (setq backlinks (delete (org-backlinks-get-heading-info) backlinks))
-      (goto-char point))
+(defun org-backlinks-parse (id)
+  (setq org-backlinks-list (org-backlinks-query id))
 
-    ;; parse backlinks
-    (if backlinks ;; TODO: this must be global variable
-        (setq helm-backlinks-source ;; TODO: move to separate file
-              (helm-build-sync-source "Backlinks"
-                :action '(("Go to" . org-backlinks-goto-heading))
-                :candidates (org-backlinks-headings backlinks)))
-      (setq helm-backlinks-source nil))
+  ;; remove current heading from list
+  (let ((point (point)))
+    (re-search-backward org-heading-regexp nil t)
+    (setq org-backlinks-query
+          (delete (org-backlinks-get-heading-info) org-backlinks-list))
+    (goto-char point))
 
-    ;; parse 2nd order backlinks
-    (dolist (heading backlinks)
-      (let ((heading-id (plist-get heading :id)))
+  (when org-backlinks-show-second-order-backlinks
+    (setq org-backlinks-second-list nil)
+
+    ;; search for backlinks for headings with an ID
+    (dolist (heading org-backlinks-list)
+      (let ((heading-id (nth 3 heading)))
         (if heading-id
             (cl-pushnew
-             (org-backlinks-headings (org-backlinks-query heading-id))
-             backlinks-2nd :test #'equal))))
+             (org-backlinks-query heading-id)
+             org-backlinks-second-list :test #'equal))))
 
-    (setq backlinks-2nd
-          (cl-remove-duplicates (apply 'append backlinks-2nd) ;; unnest
+    ;; remove duplicates & headings already present in the first list
+    (setq org-backlinks-second-list
+          (cl-remove-duplicates (apply 'append org-backlinks-second-list)
                                 :test #'equal :key #'car :from-end t))
-
-    (if backlinks-2nd ;; TODO: this must be global variable
-        (setq helm-backlinks-2nd-source  ;; TODO: move to separate file
-              (helm-build-sync-source "2nd order Backlinks"
-                :action '(("Go to" . org-backlinks-goto-heading))
-                :candidates backlinks-2nd))
-      (setq helm-backlinks-2nd-source nil))))
+    (dolist (heading org-backlinks-list)
+      (setq org-backlinks-second-list
+            (delete heading org-backlinks-second-list)))))
 
 (defun org-backlinks-get-heading-id ()
   "Return Org entry CUSTOM_ID or ID."
@@ -155,12 +157,15 @@ current heading's backlinks."
   (let ((id (org-backlinks-get-heading-id)))
     (if (not id)
         (message "Entry has no ID.")
-      (org-backlinks-def-helm-sources id)
-      (if (not helm-backlinks-source)
+      (org-backlinks-parse id)
+      (if (not org-backlinks-list)
           (message "There are no links to this entry.")
-        (helm :prompt "Go to heading: " ;; TODO: use completing-read, move helm to another file
-              :sources '(helm-backlinks-source
-                         helm-backlinks-2nd-source))))))
+        (let* ((list (if org-backlinks-show-second-order-backlinks
+                         (append org-backlinks-list
+                                 org-backlinks-second-list)
+                       org-backlinks-list))
+               (heading (completing-read "Go to heading: " list)))
+          (org-backlinks-goto-heading (cdr (assoc heading list))))))))
 
 
 (provide 'org-backlinks)
