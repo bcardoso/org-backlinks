@@ -36,10 +36,13 @@
 ;;;; Variables
 
 (defvar helm-org-backlinks-source nil
-  "Helm source for Org backlinks")
+  "Helm source for Org backlinks.")
 
 (defvar helm-org-backlinks-second-order-source nil
-  "Helm source for second order Org backlinks")
+  "Helm source for second order Org backlinks.")
+
+(defvar helm-org-backlinks-third-order-source nil
+  "Helm source for third order Org backlinks.")
 
 
 ;;;; Functions
@@ -53,13 +56,24 @@
               :candidates org-backlinks-list))
     (setq helm-org-backlinks-source nil))
 
-  (when org-backlinks-show-second-order-backlinks
-    (if org-backlinks-second-list
-        (setq helm-org-backlinks-second-order-source
-              (helm-build-sync-source "2nd order Backlinks"
-                :action '(("Go to" . org-backlinks-goto-heading))
-                :candidates org-backlinks-second-list))
-      (setq helm-org-backlinks-second-order-source nil))))
+  (if (not org-backlinks-show-second-order-backlinks)
+      (setq helm-org-backlinks-second-order-source nil))
+    (if (not org-backlinks-second-list)
+        (setq helm-org-backlinks-second-order-source nil)
+      (setq helm-org-backlinks-second-order-source
+            (helm-build-sync-source "2nd order Backlinks"
+              :action '(("Go to" . org-backlinks-goto-heading))
+              :candidates org-backlinks-second-list))
+
+      (if (not org-backlinks-show-third-order-backlinks)
+          (setq helm-org-backlinks-third-order-source nil)
+        (if (not org-backlinks-third-list)
+            (setq helm-org-backlinks-third-order-source nil)
+          (setq helm-org-backlinks-third-order-source
+                (helm-build-sync-source "3rd order Backlinks"
+                  :action '(("Go to" . org-backlinks-goto-heading))
+                  :candidates org-backlinks-third-list))))))
+
 
 ;;;###autoload
 (defun helm-org-backlinks ()
@@ -72,8 +86,11 @@
       (if (not helm-org-backlinks-source)
           (message "There are no links to this entry.")
         (helm :prompt "Go to heading: "
-              :sources '(helm-org-backlinks-source
-                         helm-org-backlinks-second-order-source))))))
+              :sources `(helm-org-backlinks-source
+                         ,(if org-backlinks-show-second-order-backlinks
+                              helm-org-backlinks-second-order-source)
+                         ,(if org-backlinks-show-third-order-backlinks
+                              helm-org-backlinks-third-order-source)))))))
 
 
 (provide 'helm-org-backlinks)

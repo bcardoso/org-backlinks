@@ -48,6 +48,10 @@ Second order backlinks are the backlinks of each of the
 current heading's backlinks."
   :type 'boolean)
 
+(defcustom org-backlinks-show-third-order-backlinks t
+  "If non-nil, show third order backlinks."
+  :type 'boolean)
+
 (defcustom org-backlinks-id-prefix "id:"
   "Prefix for searching for ID."
   :type 'string)
@@ -77,6 +81,8 @@ Alternatively, this variable can be a custom list of Org files."
 (defvar org-backlinks-second-list nil
   "List of Org headings with links to current heading's backlinks.")
 
+(defvar org-backlinks-third-list nil
+  "List of Org headings of third order backlinks.")
 
 ;;;; Functions
 
@@ -122,24 +128,31 @@ Alternatively, this variable can be a custom list of Org files."
           (delete (org-backlinks-get-heading-info) org-backlinks-list))
     (goto-char point))
 
-  (when org-backlinks-show-second-order-backlinks
-    (setq org-backlinks-second-list nil)
+  (if (not org-backlinks-show-second-order-backlinks)
+      (setq org-backlinks-second-list nil)
+    (setq org-backlinks-second-list
+          (org-backlinks-parse-backlinks org-backlinks-list))
 
-    ;; search for backlinks for headings with an ID
-    (dolist (heading org-backlinks-list)
+    (if (not org-backlinks-show-third-order-backlinks)
+        (setq org-backlinks-third-list nil)
+      (setq org-backlinks-third-list
+            (org-backlinks-parse-backlinks org-backlinks-second-list)))))
+
+(defun org-backlinks-parse-backlinks (headings-list)
+  "Search for backlinks for headings with an ID."
+  (let ((backlinks nil))
+    (dolist (heading headings-list)
       (let ((heading-id (nth 3 heading)))
         (if heading-id
             (cl-pushnew
-             (org-backlinks-query heading-id)
-             org-backlinks-second-list :test #'equal))))
+             (org-backlinks-query heading-id) backlinks :test #'equal))))
 
     ;; remove duplicates & headings already present in the first list
-    (setq org-backlinks-second-list
-          (cl-remove-duplicates (apply 'append org-backlinks-second-list)
-                                :test #'equal :key #'car :from-end t))
-    (dolist (heading org-backlinks-list)
-      (setq org-backlinks-second-list
-            (delete heading org-backlinks-second-list)))))
+    (setq backlinks (cl-remove-duplicates
+                     (apply 'append backlinks)
+                     :test #'equal :key #'car :from-end t))
+    (dolist (heading headings-list backlinks)
+      (setq backlinks (delete heading backlinks)))))
 
 (defun org-backlinks-get-heading-id ()
   "Return Org entry CUSTOM_ID or ID."
@@ -160,10 +173,11 @@ Alternatively, this variable can be a custom list of Org files."
       (org-backlinks-parse id)
       (if (not org-backlinks-list)
           (message "There are no links to this entry.")
-        (let* ((list (if org-backlinks-show-second-order-backlinks
-                         (append org-backlinks-list
+        (let* ((list (append org-backlinks-list
+                             (if org-backlinks-show-second-order-backlinks
                                  org-backlinks-second-list)
-                       org-backlinks-list))
+                             (if org-backlinks-show-third-order-backlinks
+                                 org-backlinks-third-list)))
                (heading (completing-read "Go to heading: " list)))
           (org-backlinks-goto-heading (cdr (assoc heading list))))))))
 
