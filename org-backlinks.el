@@ -24,10 +24,10 @@
 
 ;;; Commentary:
 
-;; An interface for searching Org headings' backlinks: the Org headings
-;; that have links to the Org heading at point.
+;; An interface for searching backlinks to Org headings: the Org headings
+;; that have links to the current Org heading at point.
 
-;; Second order backlinks are the backlinks of each of the current
+;; Second order backlinks are the backlinks to each of the current
 ;; heading's backlinks.
 
 
@@ -46,18 +46,22 @@
   "If non-nil, show second order backlinks.
 Second order backlinks are the backlinks of each of the
 current heading's backlinks."
+  :group 'org-backlinks
   :type 'boolean)
 
 (defcustom org-backlinks-show-third-order-backlinks t
   "If non-nil, show third order backlinks."
+  :group 'org-backlinks
   :type 'boolean)
 
 (defcustom org-backlinks-id-prefix "id:"
   "Prefix for searching for ID."
+  :group 'org-backlinks
   :type 'string)
 
 (defcustom org-backlinks-custom-id-prefix "#"
   "Prefix for searching for CUSTOM_ID."
+  :group 'org-backlinks
   :type 'string)
 
 (defcustom org-backlinks-files 'org-files-list
@@ -69,7 +73,7 @@ Default values are:
   'org-files-list  list of Org agenda files + open Org buffers
 
 Alternatively, this variable can be a custom list of Org files."
-  :group 'org-hop
+  :group 'org-backlinks
   :type 'sexp)
 
 

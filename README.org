@@ -1,0 +1,54 @@
+#+AUTHOR: Bruno Cardoso <cardoso.bc@gmail.com>
+#+DATE: 2022-03-05
+#+STARTUP: indent content
+
+* org-backlinks
+
+An interface for searching backlinks to Org headings.
+
+Backlinks are the Org headings that have links to the current Org heading at point. Second order backlinks are the backlinks to each of the current heading's backlinks. Third order backlinks are the same but for the second order ones.
+
+This package requires [[https://github.com/alphapapa/org-ql][org-ql]].
+
+The optional package =helm-org-backlinks= provides an Helm interface for =org-backlinks=.
+
+
+** Installation
+
+Clone this repo and add it to your =load-path=:
+
+#+begin_src emacs-lisp
+(add-to-list 'load-path "/path/to/org-backlinks")
+(require 'org-backlinks)
+(require 'helm-org-backlinks) ; optional helm interface
+#+end_src
+
+Or, with use-package + straight.el:
+
+#+begin_src emacs-lisp
+(use-package org-backlinks
+  :straight (org-backlinks :host github :repo "bcardoso/org-backlinks"
+                           :files ("org-backlinks.el"))
+  :bind ("C-c z" . org-backlinks))
+
+;; optional helm interface
+(use-package helm-org-backlinks
+  :straight (helm-org-backlinks :host github :repo "bcardoso/org-backlinks"
+                                :files ("helm-org-backlinks.el"))
+  :bind ("C-c z" . helm-org-backlinks))
+#+end_src
+
+
+** Usage
+
+Just run =M-x org-backlinks= or with the suggested binding =C-c z= in a Org heading.
+
+Or, if you are a Helm user, run =M-x helm-org-backlinks=.
+
+=org-backlinks= will search the files defined by =org-backlinks-files= for the CUSTOM_ID or the ID of the current Org heading.
+
+The other customizable variables are accessible through the customize interface:
+
+- =M-x customize-group RET org-backlinks=.
+
+
