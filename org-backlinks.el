@@ -76,6 +76,11 @@ Alternatively, this variable can be a custom list of Org files."
   :group 'org-backlinks
   :type 'sexp)
 
+(defcustom org-backlinks-width 78
+  "Maximum number of characters available for the Org heading path."
+  :group 'org-backlinks
+  :type 'integer)
+
 
 ;;;; Variables
 
@@ -103,7 +108,7 @@ Alternatively, this variable can be a custom list of Org files."
 
 (defun org-backlinks-get-heading-info ()
   "Return Org heading info at point: heading, buffer, point, id."
-  `(,(org-format-outline-path (org-get-outline-path t t))
+  `(,(org-format-outline-path (org-get-outline-path t t) org-backlinks-width)
     ,(buffer-name)
     ,(point)
     ,(or (org-entry-get (point) "CUSTOM_ID") (org-id-get))))
@@ -143,7 +148,7 @@ Alternatively, this variable can be a custom list of Org files."
             (org-backlinks-parse-backlinks org-backlinks-second-list)))))
 
 (defun org-backlinks-parse-backlinks (headings-list)
-  "Search for backlinks for headings with an ID."
+  "Search for backlinks to headings with an ID."
   (let ((backlinks nil))
     (dolist (heading headings-list)
       (let ((heading-id (nth 3 heading)))

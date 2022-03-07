@@ -52,7 +52,7 @@
   (if org-backlinks-list
       (setq helm-org-backlinks-source
             (helm-build-sync-source "Backlinks"
-              :action '(("Go to" . org-backlinks-goto-heading))
+              :action '(("Go to heading" . org-backlinks-goto-heading))
               :candidates org-backlinks-list))
     (setq helm-org-backlinks-source nil))
 
@@ -62,7 +62,7 @@
         (setq helm-org-backlinks-second-order-source nil)
       (setq helm-org-backlinks-second-order-source
             (helm-build-sync-source "2nd order Backlinks"
-              :action '(("Go to" . org-backlinks-goto-heading))
+              :action '(("Go to heading" . org-backlinks-goto-heading))
               :candidates org-backlinks-second-list))
 
       (if (not org-backlinks-show-third-order-backlinks)
@@ -71,7 +71,7 @@
             (setq helm-org-backlinks-third-order-source nil)
           (setq helm-org-backlinks-third-order-source
                 (helm-build-sync-source "3rd order Backlinks"
-                  :action '(("Go to" . org-backlinks-goto-heading))
+                  :action '(("Go to heading" . org-backlinks-goto-heading))
                   :candidates org-backlinks-third-list))))))
 
 
@@ -86,6 +86,7 @@
       (if (not helm-org-backlinks-source)
           (message "There are no links to this entry.")
         (helm :prompt "Go to heading: "
+              :truncate-lines nil
               :sources `(helm-org-backlinks-source
                          ,(if org-backlinks-show-second-order-backlinks
                               helm-org-backlinks-second-order-source)
