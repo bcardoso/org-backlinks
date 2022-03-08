@@ -129,6 +129,8 @@ Alternatively, this variable can be a custom list of Org files."
 
 (defun org-backlinks-parse (id)
   (setq org-backlinks-list (org-backlinks-query id))
+  (setq org-backlinks-second-list nil)
+  (setq org-backlinks-third-list nil)
 
   ;; remove current heading from list
   (let ((point (point)))
@@ -137,13 +139,10 @@ Alternatively, this variable can be a custom list of Org files."
           (delete (org-backlinks-get-heading-info) org-backlinks-list))
     (goto-char point))
 
-  (if (not org-backlinks-show-second-order-backlinks)
-      (setq org-backlinks-second-list nil)
+  (when org-backlinks-show-second-order-backlinks
     (setq org-backlinks-second-list
           (org-backlinks-parse-backlinks org-backlinks-list))
-
-    (if (not org-backlinks-show-third-order-backlinks)
-        (setq org-backlinks-third-list nil)
+    (when org-backlinks-show-third-order-backlinks
       (setq org-backlinks-third-list
             (org-backlinks-parse-backlinks org-backlinks-second-list)))))
 
