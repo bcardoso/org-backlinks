@@ -24,11 +24,20 @@
 
 ;;; Commentary:
 
-;; An interface for searching backlinks to Org headings: the Org headings
-;; that have links to the current Org heading at point.
+;; An interface for searching backlinks to Org headings.
 
-;; Second order backlinks are the backlinks to each of the current
-;; heading's backlinks.
+;; This package aims to give a sense of context when searching for
+;; links *to* and *from* the current note.
+
+;; Backlinks are the Org headings that have links to the current
+;; Org heading at point. Second order backlinks are the backlinks to
+;; each of the current heading's backlinks. Third order backlinks
+;; are the same but for the second order ones.
+
+;; Optionally, it can also show the direct and indirect links of a note.
+
+;; Direct links are the links to other headings present in the current
+;; heading. Indirect links are the direct links present in those headings.
 
 
 ;;; Code:
@@ -44,7 +53,7 @@
 
 (defcustom org-backlinks-show-second-order-backlinks t
   "If non-nil, show second order backlinks.
-Second order backlinks are the backlinks of each of the
+Second order backlinks are the backlinks to each of the
 current heading's backlinks."
   :group 'org-backlinks
   :type 'boolean)
@@ -54,13 +63,19 @@ current heading's backlinks."
   :group 'org-backlinks
   :type 'boolean)
 
-(defcustom org-backlinks-id-prefix "id:"
-  "Prefix for searching for ID."
+(defcustom org-backlinks-show-direct-links nil
+  "If non-nil, show the direct and indirect links to other headings
+present in the current Org heading."
+  :group 'org-backlinks
+  :type 'boolean)
+
+(defcustom org-backlinks-prefix-id "id:"
+  "Prefix for ID search."
   :group 'org-backlinks
   :type 'string)
 
-(defcustom org-backlinks-custom-id-prefix "#"
-  "Prefix for searching for CUSTOM_ID."
+(defcustom org-backlinks-prefix-custom-id "#"
+  "Prefix for CUSTOM_ID search."
   :group 'org-backlinks
   :type 'string)
 
@@ -93,6 +108,13 @@ Alternatively, this variable can be a custom list of Org files."
 (defvar org-backlinks-third-list nil
   "List of Org headings of third order backlinks.")
 
+(defvar org-backlinks-direct-list nil
+  "List of Org headings direct linked from current heading.")
+
+(defvar org-backlinks-indirect-list nil
+  "List of Org headings indirect linked from current heading.")
+
+
 ;;;; Functions
 
 (defun org-backlinks-files ()
@@ -106,61 +128,164 @@ Alternatively, this variable can be a custom list of Org files."
         (t
          org-backlinks-files)))
 
+(defun org-backlinks-get-heading-info-by-id (id)
+  "Return the heading info of ID."
+  (org-ql-query
+    :select #'org-backlinks-get-heading-info
+    :from (org-backlinks-files)
+    :where `(and (property "ID")
+                 (string-match ,id
+                               (org-entry-get (point) "ID")))))
+
+(defun org-backlinks-get-heading-info-by-custom-id (custom-id)
+  "Return the heading info of CUSTOM-ID."
+  (org-ql-query
+    :select #'org-backlinks-get-heading-info
+    :from (org-backlinks-files)
+    :where `(and (property "CUSTOM_ID")
+                 (string-match ,custom-id
+                               (org-entry-get (point) "CUSTOM_ID")))))
+
+(defun org-backlinks-search-link (bound)
+  "Return the ID or CUSTOM_ID of an Org link. BOUND is the end of heading."
+  (let ((start (re-search-forward "\\[\\[\\(id:\\|.*::#\\)" bound t))
+        (end (re-search-forward "\\]\\[" nil t)))
+    (goto-char (+ 1 (point)))
+    (if start
+        (buffer-substring-no-properties start (- end 2)))))
+
+(defun org-backlinks-collect-heading-links (bound)
+  "Collect links to Org IDs up until BOUND with `org-backlinks-search-link'."
+  (save-excursion
+    (org-back-to-heading)
+    (let ((x (org-backlinks-search-link bound))
+          (list nil))
+      (while x
+        (cl-pushnew x list :test #'equal)
+        (setq x (org-backlinks-search-link bound)))
+      (reverse list))))
+
 (defun org-backlinks-get-heading-info ()
-  "Return Org heading info at point: heading, buffer, point, id."
-  `(,(org-format-outline-path (org-get-outline-path t t) org-backlinks-width)
-    ,(buffer-name)
-    ,(point)
-    ,(or (org-entry-get (point) "CUSTOM_ID") (org-id-get))))
+  "Return Org heading info.
+This is a list whose CAR is the outline path of the current entry
+and CDR is a plist containing `:tags', `:buffer', `:begin', `:end', `:id'
+and `:custom_id'."
+  (interactive)
+  (let ((props (cadr (org-element-at-point))))
+    `(,(org-format-outline-path
+        (org-get-outline-path t t) org-backlinks-width)
+      (:tags      ,(org-get-tags)
+       :buffer    ,(buffer-name)
+       :begin     ,(plist-get props :begin)
+       :end       ,(plist-get props :end)
+       :id        ,(org-id-get)
+       :custom_id ,(org-entry-get (point) "CUSTOM_ID")))))
 
 (defun org-backlinks-query (id)
   "Return the headings that link to an ID."
   (org-ql-select (org-backlinks-files) id
     :action #'org-backlinks-get-heading-info))
 
-(defun org-backlinks-goto-heading (buffer-point)
+(defun org-backlinks-goto-heading (heading)
+  "Go to HEADING."
   (interactive)
   (org-mark-ring-push)
-  (switch-to-buffer-other-window (car buffer-point))
-  (goto-char (cadr buffer-point))
+  (switch-to-buffer-other-window (plist-get (car heading) :buffer))
+  (goto-char (plist-get (car heading) :begin))
   (org-show-context)
   (org-show-entry)
   (org-show-children))
 
-(defun org-backlinks-parse (id)
-  (setq org-backlinks-list (org-backlinks-query id))
-  (setq org-backlinks-second-list nil)
-  (setq org-backlinks-third-list nil)
-
-  ;; remove current heading from list
-  (let ((point (point)))
-    (re-search-backward org-heading-regexp nil t)
-    (setq org-backlinks-query
-          (delete (org-backlinks-get-heading-info) org-backlinks-list))
-    (goto-char point))
-
-  (when org-backlinks-show-second-order-backlinks
-    (setq org-backlinks-second-list
-          (org-backlinks-parse-backlinks org-backlinks-list))
-    (when org-backlinks-show-third-order-backlinks
-      (setq org-backlinks-third-list
-            (org-backlinks-parse-backlinks org-backlinks-second-list)))))
+(defun org-backlinks-uniq (list)
+  "Remove duplicates and normalize the LIST of headings."
+  (cl-remove-duplicates (apply 'append list)
+                        :test #'equal :key #'car :from-end t))
 
 (defun org-backlinks-parse-backlinks (headings-list)
-  "Search for backlinks to headings with an ID."
+  "Parse HEADINGS-LIST for headings with IDs."
   (let ((backlinks nil))
     (dolist (heading headings-list)
-      (let ((heading-id (nth 3 heading)))
+      (let ((heading-id (or (plist-get (cadr heading) :custom_id)
+                            (plist-get (cadr heading) :id))))
         (if heading-id
-            (cl-pushnew
-             (org-backlinks-query heading-id) backlinks :test #'equal))))
+            (cl-pushnew (org-backlinks-query heading-id)
+                        backlinks
+                        :test #'equal))))
+    ;; remove duplicates
+    (setq backlinks (org-backlinks-uniq backlinks))
 
-    ;; remove duplicates & headings already present in the first list
-    (setq backlinks (cl-remove-duplicates
-                     (apply 'append backlinks)
-                     :test #'equal :key #'car :from-end t))
-    (dolist (heading headings-list backlinks)
-      (setq backlinks (delete heading backlinks)))))
+    ;; remove headings already present in the headings-list
+    (setq backlinks (cl-set-difference backlinks headings-list
+                                       :test #'equal))))
+
+(defmacro org-backlinks-build-list (switch list prev del)
+  "Macro for building the headings lists."
+  `(if ,switch
+       (setq ,list
+             (cl-set-difference ,prev ,del :test #'equal))
+     (setq ,list nil)))
+
+(defun org-backlinks-parse (id)
+  "Parse backlink lists for current ID."
+  (let ((current-heading (save-excursion
+                           (org-back-to-heading)
+                           (org-backlinks-get-heading-info))))
+    ;; backlinks
+    (org-backlinks-build-list
+     t
+     org-backlinks-list
+     (org-backlinks-query id)
+     (list current-heading))
+
+    ;; 2nd order backlinks
+    (org-backlinks-build-list
+     org-backlinks-show-second-order-backlinks
+     org-backlinks-second-list
+     (org-backlinks-parse-backlinks org-backlinks-list)
+     (append (list current-heading) org-backlinks-list))
+
+    ;; 3rd order backlinks
+    (org-backlinks-build-list
+     org-backlinks-show-third-order-backlinks
+     org-backlinks-third-list
+     (org-backlinks-parse-backlinks org-backlinks-second-list)
+     (append (list current-heading) org-backlinks-list))))
+
+(defun org-backlinks-direct-headings (bound)
+  "Collect all Org links in current heading up until BOUND (end of heading)."
+  (org-backlinks-uniq
+   (append
+    (mapcar #'org-backlinks-get-heading-info-by-id
+            (org-backlinks-collect-heading-links bound))
+    (mapcar #'org-backlinks-get-heading-info-by-custom-id
+            (org-backlinks-collect-heading-links bound)))))
+
+(defun org-backlinks-parse-direct-links (id)
+  "List of headings whose backlink is the current heading ID.
+This is a list of links from current heading to other headings."
+  (let ((current-heading (save-excursion
+                           (org-back-to-heading)
+                           (org-backlinks-get-heading-info))))
+    (org-backlinks-build-list
+     t
+     org-backlinks-direct-list
+     (org-backlinks-direct-headings (plist-get (cadr current-heading) :end))
+     nil)
+
+    (org-backlinks-build-list
+     t
+     org-backlinks-indirect-list
+     (org-backlinks-uniq
+      (let ((indirect nil))
+        (dolist (heading org-backlinks-direct-list (reverse indirect))
+          (save-excursion
+            (switch-to-buffer (plist-get (cadr heading) :buffer))
+            (goto-char (plist-get (cadr heading) :begin))
+            (cl-pushnew
+             (org-backlinks-direct-headings (plist-get (cadr heading) :end))
+             indirect :test #'equal)))))
+     (append (list current-heading) org-backlinks-direct-list))))
+
 
 (defun org-backlinks-get-heading-id ()
   "Return Org entry CUSTOM_ID or ID."
@@ -168,24 +293,31 @@ Alternatively, this variable can be a custom list of Org files."
   (let ((id (org-id-get))
         (custom-id (org-entry-get (point) "CUSTOM_ID")))
     ;; custom_ids have priority over uuid
-    (cond (custom-id (concat org-backlinks-custom-id-prefix custom-id))
-          (id (concat org-backlinks-id-prefix id))
+    (cond (custom-id (concat org-backlinks-prefix-custom-id custom-id))
+          (id (concat org-backlinks-prefix-id id))
           (t nil))))
 
 ;;;###autoload
 (defun org-backlinks ()
+  "Command for selection Org headings with `completing-read'."
   (interactive)
   (let ((id (org-backlinks-get-heading-id)))
     (if (not id)
         (message "Entry has no ID.")
       (org-backlinks-parse id)
+      (if org-backlinks-show-direct-links
+          (org-backlinks-parse-direct-links id))
       (if (not org-backlinks-list)
           (message "There are no links to this entry.")
         (let* ((list (append org-backlinks-list
                              (if org-backlinks-show-second-order-backlinks
                                  org-backlinks-second-list)
                              (if org-backlinks-show-third-order-backlinks
-                                 org-backlinks-third-list)))
+                                 org-backlinks-third-list)
+                             (if org-backlinks-show-direct-links
+                                 org-backlinks-direct-list)
+                             (if org-backlinks-show-direct-links
+                                 org-backlinks-indirect-list)))
                (heading (completing-read "Go to heading: " list)))
           (org-backlinks-goto-heading (cdr (assoc heading list))))))))
 
