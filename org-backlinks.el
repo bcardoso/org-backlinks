@@ -26,7 +26,7 @@
 
 ;; An interface for searching backlinks to Org headings.
 
-;; This package aims to give a sense of context when searching for
+;; This package aims to provide a sense of context when searching for
 ;; links *to* and *from* the current note.
 
 ;; Backlinks are the Org headings that have links to the current
