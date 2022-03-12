@@ -96,6 +96,12 @@ Alternatively, this variable can be a custom list of Org files."
   :group 'org-backlinks
   :type 'integer)
 
+(defcustom org-backlinks-recenter nil
+  "If nil, center point in selected window and maybe redisplay frame.
+With a numeric value, recenter putting point on screen line
+relative to the selected window. See `recenter'."
+  :group 'org-backlinks
+  :type 'integer)
 
 ;;;; Variables
 
@@ -194,7 +200,8 @@ and `:custom_id'."
   (goto-char (plist-get (car heading) :begin))
   (org-show-context)
   (org-show-entry)
-  (org-show-children))
+  (org-show-children)
+  (recenter org-backlinks-recenter))
 
 (defun org-backlinks-uniq (list)
   "Remove duplicates and normalize the LIST of headings."
