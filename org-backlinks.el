@@ -270,7 +270,8 @@ and `:custom_id'."
 (defun org-backlinks-parse-direct-links (id)
   "List of headings whose backlink is the current heading ID.
 This is a list of links from current heading to other headings."
-  (let ((current-heading (save-excursion
+  (let ((point (point))
+        (current-heading (save-excursion
                            (org-back-to-heading)
                            (org-backlinks-get-heading-info))))
     (org-backlinks-build-list
@@ -285,13 +286,20 @@ This is a list of links from current heading to other headings."
      (org-backlinks-uniq
       (let ((indirect nil))
         (dolist (heading org-backlinks-direct-list (reverse indirect))
+          ;; FIXME: this save-excursion does not prevent us
+          ;;        from getting stuck on the last link found
+          ;;        by org-backlinks-direct-headings...
           (save-excursion
             (switch-to-buffer (plist-get (cadr heading) :buffer))
             (goto-char (plist-get (cadr heading) :begin))
             (cl-pushnew
              (org-backlinks-direct-headings (plist-get (cadr heading) :end))
              indirect :test #'equal)))))
-     (append (list current-heading) org-backlinks-direct-list))))
+     (append (list current-heading) org-backlinks-direct-list))
+
+    ;; HACK: ensure that we are always back to the current-heading
+    (switch-to-buffer (plist-get (cadr current-heading) :buffer))
+    (goto-char point)))
 
 
 (defun org-backlinks-get-heading-id ()
