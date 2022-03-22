@@ -94,26 +94,19 @@
 (defun helm-org-backlinks ()
   "Helm interface for `org-backlinks'."
   (interactive)
-  (let ((id (org-backlinks-get-heading-id)))
-    (if (not id)
-        (message "Entry has no ID.")
-      (org-backlinks-parse id)
-      (if org-backlinks-show-direct-links
-          (org-backlinks-parse-direct-links id))
-      (helm-org-backlinks-build-sources)
-      (if (not helm-org-backlinks-source)
-          (message "There are no links to this entry.")
-        (helm :prompt "Go to heading: "
-              :truncate-lines nil
-              :sources `(helm-org-backlinks-source
-                         ,(if org-backlinks-show-second-order-backlinks
-                              helm-org-backlinks-second-order-source)
-                         ,(if org-backlinks-show-third-order-backlinks
-                              helm-org-backlinks-third-order-source)
-                         ,(if org-backlinks-show-direct-links
-                              helm-org-backlinks-direct-source)
-                         ,(if org-backlinks-show-direct-links
-                            helm-org-backlinks-indirect-source)))))))
+  (org-backlinks-setup)
+  (helm-org-backlinks-build-sources)
+  (helm :prompt "Go to heading: "
+        :truncate-lines nil
+        :sources `(helm-org-backlinks-source
+                   ,(if org-backlinks-show-second-order-backlinks
+                        helm-org-backlinks-second-order-source)
+                   ,(if org-backlinks-show-third-order-backlinks
+                        helm-org-backlinks-third-order-source)
+                   ,(if org-backlinks-show-direct-links
+                        helm-org-backlinks-direct-source)
+                   ,(if org-backlinks-show-direct-links
+                        helm-org-backlinks-indirect-source))))
 
 
 (provide 'helm-org-backlinks)

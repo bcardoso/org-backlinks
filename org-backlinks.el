@@ -286,18 +286,14 @@ This is a list of links from current heading to other headings."
      (org-backlinks-uniq
       (let ((indirect nil))
         (dolist (heading org-backlinks-direct-list (reverse indirect))
-          ;; FIXME: this save-excursion does not prevent us
-          ;;        from getting stuck on the last link found
-          ;;        by org-backlinks-direct-headings...
-          (save-excursion
-            (switch-to-buffer (plist-get (cadr heading) :buffer))
-            (goto-char (plist-get (cadr heading) :begin))
-            (cl-pushnew
-             (org-backlinks-direct-headings (plist-get (cadr heading) :end))
-             indirect :test #'equal)))))
+          (switch-to-buffer (plist-get (cadr heading) :buffer))
+          (goto-char (plist-get (cadr heading) :begin))
+          (cl-pushnew
+           (org-backlinks-direct-headings (plist-get (cadr heading) :end))
+           indirect :test #'equal))))
      (append (list current-heading) org-backlinks-direct-list))
 
-    ;; HACK: ensure that we are always back to the current-heading
+    ;; XXX: ensure that we are always back to the current-heading
     (switch-to-buffer (plist-get (cadr current-heading) :buffer))
     (goto-char point)))
 
@@ -312,29 +308,36 @@ This is a list of links from current heading to other headings."
           (id (concat org-backlinks-prefix-id id))
           (t nil))))
 
+(defun org-backlinks-setup ()
+  "Setup all links lists based on the ID of the current heading."
+  (let ((id (org-backlinks-get-heading-id)))
+    (if id
+        (org-backlinks-parse id)
+      (message "Entry has no ID.")
+      (setq org-backlinks-list nil)
+      (setq org-backlinks-second-list nil)
+      (setq org-backlinks-third-list nil))
+    (if (not org-backlinks-list)
+        (message "There are no links to this entry."))
+    (if org-backlinks-show-direct-links
+        (org-backlinks-parse-direct-links id))))
+
 ;;;###autoload
 (defun org-backlinks ()
   "Command for selection Org headings with `completing-read'."
   (interactive)
-  (let ((id (org-backlinks-get-heading-id)))
-    (if (not id)
-        (message "Entry has no ID.")
-      (org-backlinks-parse id)
-      (if org-backlinks-show-direct-links
-          (org-backlinks-parse-direct-links id))
-      (if (not org-backlinks-list)
-          (message "There are no links to this entry.")
-        (let* ((list (append org-backlinks-list
-                             (if org-backlinks-show-second-order-backlinks
-                                 org-backlinks-second-list)
-                             (if org-backlinks-show-third-order-backlinks
-                                 org-backlinks-third-list)
-                             (if org-backlinks-show-direct-links
-                                 org-backlinks-direct-list)
-                             (if org-backlinks-show-direct-links
-                                 org-backlinks-indirect-list)))
-               (heading (completing-read "Go to heading: " list)))
-          (org-backlinks-goto-heading (cdr (assoc heading list))))))))
+  (org-backlinks-setup)
+  (let* ((list (append org-backlinks-list
+                       (if org-backlinks-show-second-order-backlinks
+                           org-backlinks-second-list)
+                       (if org-backlinks-show-third-order-backlinks
+                           org-backlinks-third-list)
+                       (if org-backlinks-show-direct-links
+                           org-backlinks-direct-list)
+                       (if org-backlinks-show-direct-links
+                           org-backlinks-indirect-list)))
+         (heading (completing-read "Go to heading: " list)))
+    (org-backlinks-goto-heading (cdr (assoc heading list)))))
 
 
 (provide 'org-backlinks)
