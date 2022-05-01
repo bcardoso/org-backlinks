@@ -95,18 +95,19 @@
   "Helm interface for `org-backlinks'."
   (interactive)
   (org-backlinks-setup)
-  (helm-org-backlinks-build-sources)
-  (helm :prompt "Go to heading: "
-        :truncate-lines nil
-        :sources `(helm-org-backlinks-source
-                   ,(if org-backlinks-show-second-order-backlinks
-                        helm-org-backlinks-second-order-source)
-                   ,(if org-backlinks-show-third-order-backlinks
-                        helm-org-backlinks-third-order-source)
-                   ,(if org-backlinks-show-direct-links
-                        helm-org-backlinks-direct-source)
-                   ,(if org-backlinks-show-direct-links
-                        helm-org-backlinks-indirect-source))))
+  (when (org-backlinks-all-list)
+    (helm-org-backlinks-build-sources)
+    (helm :prompt "Go to heading: "
+          :truncate-lines nil
+          :sources `(helm-org-backlinks-source
+                     ,(if org-backlinks-show-second-order-backlinks
+                          helm-org-backlinks-second-order-source)
+                     ,(if org-backlinks-show-third-order-backlinks
+                          helm-org-backlinks-third-order-source)
+                     ,(if org-backlinks-show-direct-links
+                          helm-org-backlinks-direct-source)
+                     ,(if org-backlinks-show-direct-links
+                          helm-org-backlinks-indirect-source)))))
 
 
 (provide 'helm-org-backlinks)

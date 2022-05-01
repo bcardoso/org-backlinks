@@ -322,22 +322,27 @@ This is a list of links from current heading to other headings."
     (if org-backlinks-show-direct-links
         (org-backlinks-parse-direct-links id))))
 
+(defun org-backlinks-all-list ()
+  "Return a list with all possible links."
+  (append org-backlinks-list
+          (if org-backlinks-show-second-order-backlinks
+              org-backlinks-second-list)
+          (if org-backlinks-show-third-order-backlinks
+              org-backlinks-third-list)
+          (if org-backlinks-show-direct-links
+              org-backlinks-direct-list)
+          (if org-backlinks-show-direct-links
+              org-backlinks-indirect-list)))
+
 ;;;###autoload
 (defun org-backlinks ()
   "Command for selection Org headings with `completing-read'."
   (interactive)
   (org-backlinks-setup)
-  (let* ((list (append org-backlinks-list
-                       (if org-backlinks-show-second-order-backlinks
-                           org-backlinks-second-list)
-                       (if org-backlinks-show-third-order-backlinks
-                           org-backlinks-third-list)
-                       (if org-backlinks-show-direct-links
-                           org-backlinks-direct-list)
-                       (if org-backlinks-show-direct-links
-                           org-backlinks-indirect-list)))
-         (heading (completing-read "Go to heading: " list)))
-    (org-backlinks-goto-heading (cdr (assoc heading list)))))
+  (let ((link-list (org-backlinks-all-list)))
+    (when link-list
+      (let ((heading (completing-read "Go to heading: " link-list)))
+        (org-backlinks-goto-heading (cdr (assoc heading link-list)))))))
 
 
 (provide 'org-backlinks)
