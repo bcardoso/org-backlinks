@@ -155,7 +155,7 @@ relative to the selected window. See `recenter'."
 (defun org-backlinks-search-link (bound)
   "Return the ID or CUSTOM_ID of an Org link. BOUND is the end of heading."
   (let ((start (re-search-forward "\\[\\[\\(id:\\|.*::#\\)" bound t))
-        (end (re-search-forward "\\]\\[" nil t)))
+        (end (re-search-forward "\\(\\]\\[\\|\\]\\]\\)" nil t)))
     (goto-char (+ 1 (point)))
     (if start
         (buffer-substring-no-properties start (- end 2)))))
