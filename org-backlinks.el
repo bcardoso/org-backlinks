@@ -177,15 +177,18 @@ This is a list whose CAR is the outline path of the current entry
 and CDR is a plist containing `:tags', `:buffer', `:begin', `:end', `:id'
 and `:custom_id'."
   (interactive)
-  (let ((props (cadr (org-element-at-point))))
+  (let ((props (cadr (org-element-at-point-no-context))))
     `(,(org-format-outline-path
-        (org-get-outline-path t t) org-backlinks-width)
+        (org-get-outline-path t t)
+        org-backlinks-width
+        (format "%s:" (file-name-nondirectory (buffer-file-name)))
+        "/")
       (:tags      ,(org-get-tags)
        :buffer    ,(buffer-name)
        :begin     ,(plist-get props :begin)
        :end       ,(plist-get props :end)
-       :id        ,(org-id-get)
-       :custom_id ,(org-entry-get (point) "CUSTOM_ID")))))
+       :id        ,(plist-get props :ID) ;;(org-id-get)
+       :custom_id ,(plist-get props :CUSTOM_ID)))))  ;;(org-entry-get (point) "CUSTOM_ID")))))
 
 (defun org-backlinks-query (id)
   "Return the headings that link to an ID."
