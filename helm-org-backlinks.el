@@ -1,6 +1,6 @@
 ;;; helm-org-backlinks.el --- Helm interface for Org backlinks -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 Bruno Cardoso
+;; Copyright (C) 2022-2023 Bruno Cardoso
 
 ;; Author: Bruno Cardoso <cardoso.bc@gmail.com>
 ;; URL: https://github.com/bcardoso/org-backlinks
@@ -33,7 +33,7 @@
 (require 'org-backlinks)
 
 
-;;;; Variables
+;;;; Sources
 
 (defvar helm-org-backlinks-source nil
   "Helm source for Org backlinks.")
@@ -51,7 +51,7 @@
   "Helm source for the indirect links from current heading.")
 
 
-;;;; Functions
+;;;; Build source
 
 (defmacro helm-org-backlinks-build-source (switch source name candidates)
   "Macro for building `helm-org-backlinks' sources."
@@ -63,32 +63,33 @@
                    :candidates ,candidates)))
      (setq ,source nil)))
 
-(defun helm-org-backlinks-build-sources ()
-  "Build Helm sources for Org backlinks."
-  (helm-org-backlinks-build-source t
-                                   helm-org-backlinks-source
-                                   "Backlinks"
-                                   org-backlinks-list)
+(helm-org-backlinks-build-source t
+                                 helm-org-backlinks-source
+                                 "Backlinks"
+                                 (lambda () org-backlinks-list))
 
-  (helm-org-backlinks-build-source org-backlinks-show-second-order-backlinks
-                                   helm-org-backlinks-second-order-source
-                                   "2nd order Backlinks"
-                                   org-backlinks-second-list)
+(helm-org-backlinks-build-source org-backlinks-show-second-order-backlinks
+                                 helm-org-backlinks-second-order-source
+                                 "2nd order Backlinks"
+                                 (lambda () org-backlinks-second-list))
 
-  (helm-org-backlinks-build-source org-backlinks-show-third-order-backlinks
-                                   helm-org-backlinks-third-order-source
-                                   "3rd order Backlinks"
-                                   org-backlinks-third-list)
+(helm-org-backlinks-build-source org-backlinks-show-third-order-backlinks
+                                 helm-org-backlinks-third-order-source
+                                 "3rd order Backlinks"
+                                 (lambda () org-backlinks-third-list))
 
-  (helm-org-backlinks-build-source org-backlinks-show-direct-links
-                                   helm-org-backlinks-direct-source
-                                   "Direct links"
-                                   org-backlinks-direct-list)
+(helm-org-backlinks-build-source org-backlinks-show-direct-links
+                                 helm-org-backlinks-direct-source
+                                 "Direct links"
+                                 (lambda () org-backlinks-direct-list))
 
-  (helm-org-backlinks-build-source org-backlinks-show-direct-links
-                                   helm-org-backlinks-indirect-source
-                                   "Indirect links"
-                                   org-backlinks-indirect-list))
+(helm-org-backlinks-build-source org-backlinks-show-direct-links
+                                 helm-org-backlinks-indirect-source
+                                 "Indirect links"
+                                 (lambda () org-backlinks-indirect-list))
+
+
+;;;; Commands
 
 ;;;###autoload
 (defun helm-org-backlinks ()
@@ -96,7 +97,6 @@
   (interactive)
   (org-backlinks-setup)
   (when (org-backlinks-all-list)
-    (helm-org-backlinks-build-sources)
     (helm :prompt "Go to heading: "
           :truncate-lines nil
           :sources `(helm-org-backlinks-source

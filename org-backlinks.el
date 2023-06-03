@@ -1,6 +1,6 @@
 ;;; org-backlinks.el --- Org backlinks -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022 Bruno Cardoso
+;; Copyright (C) 2022-2023 Bruno Cardoso
 
 ;; Author: Bruno Cardoso <cardoso.bc@gmail.com>
 ;; URL: https://github.com/bcardoso/org-backlinks
@@ -30,14 +30,14 @@
 ;; links *to* and *from* the current note.
 
 ;; Backlinks are the Org headings that have links to the current
-;; Org heading at point. Second order backlinks are the backlinks to
-;; each of the current heading's backlinks. Third order backlinks
+;; Org heading at point.  Second order backlinks are the backlinks to
+;; each of the current heading's backlinks.  Third order backlinks
 ;; are the same but for the second order ones.
 
 ;; Optionally, it can also show the direct and indirect links of a note.
 
 ;; Direct links are the links to other headings present in the current
-;; heading. Indirect links are the direct links present in those headings.
+;; heading.  Indirect links are the direct links present in those headings.
 
 
 ;;; Code:
