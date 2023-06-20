@@ -125,14 +125,16 @@ relative to the selected window. See `recenter'."
 
 (defun org-backlinks-files ()
   "List of Org files to search for headings."
-  (cond ((eq org-backlinks-files 'agenda)
-         (org-agenda-files))
-        ((eq org-backlinks-files 'buffers)
-         (org-buffer-list))
-        ((eq org-backlinks-files 'org-files-list)
-         (org-files-list))
-        (t
-         org-backlinks-files)))
+  (delete-dups
+   (mapcar #'file-truename
+           (cond ((eq org-backlinks-files 'agenda)
+                  (org-agenda-files))
+                 ((eq org-backlinks-files 'buffers)
+                  (org-buffer-list))
+                 ((eq org-backlinks-files 'org-files-list)
+                  (org-files-list))
+                 (t
+                  org-backlinks-files)))))
 
 (defun org-backlinks-get-heading-info-by-id (id)
   "Return the heading info of ID."
