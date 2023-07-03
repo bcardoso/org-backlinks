@@ -95,19 +95,21 @@
 (defun helm-org-backlinks ()
   "Helm interface for `org-backlinks'."
   (interactive)
-  (org-backlinks-setup)
-  (when (org-backlinks-all-list)
-    (helm :prompt "Go to heading: "
-          :truncate-lines nil
-          :sources `(helm-org-backlinks-source
-                     ,(if org-backlinks-show-second-order-backlinks
-                          helm-org-backlinks-second-order-source)
-                     ,(if org-backlinks-show-third-order-backlinks
-                          helm-org-backlinks-third-order-source)
-                     ,(if org-backlinks-show-direct-links
-                          helm-org-backlinks-direct-source)
-                     ,(if org-backlinks-show-direct-links
-                          helm-org-backlinks-indirect-source)))))
+  (if (not (eq major-mode 'org-mode))
+      (message "Not an Org buffer.")
+    (org-backlinks-setup)
+    (when (org-backlinks-all-list)
+      (helm :prompt "Go to heading: "
+            :truncate-lines nil
+            :sources `(helm-org-backlinks-source
+                       ,(if org-backlinks-show-second-order-backlinks
+                            helm-org-backlinks-second-order-source)
+                       ,(if org-backlinks-show-third-order-backlinks
+                            helm-org-backlinks-third-order-source)
+                       ,(if org-backlinks-show-direct-links
+                            helm-org-backlinks-direct-source)
+                       ,(if org-backlinks-show-direct-links
+                            helm-org-backlinks-indirect-source))))))
 
 
 (provide 'helm-org-backlinks)

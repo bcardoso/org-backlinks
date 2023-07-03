@@ -343,11 +343,13 @@ This is a list of links from current heading to other headings."
 (defun org-backlinks ()
   "Command for selection Org headings with `completing-read'."
   (interactive)
-  (org-backlinks-setup)
-  (let ((link-list (org-backlinks-all-list)))
-    (when link-list
-      (let ((heading (completing-read "Go to heading: " link-list)))
-        (org-backlinks-goto-heading (cdr (assoc heading link-list)))))))
+  (if (not (eq major-mode 'org-mode))
+      (message "Not an Org buffer.")
+    (org-backlinks-setup)
+    (let ((link-list (org-backlinks-all-list)))
+      (when link-list
+        (let ((heading (completing-read "Go to heading: " link-list)))
+          (org-backlinks-goto-heading (cdr (assoc heading link-list))))))))
 
 
 (provide 'org-backlinks)
