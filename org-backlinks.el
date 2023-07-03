@@ -179,7 +179,7 @@ This is a list whose CAR is the outline path of the current entry
 and CDR is a plist containing `:tags', `:buffer', `:begin', `:end', `:id'
 and `:custom_id'."
   (interactive)
-  (let ((props (cadr (org-element-at-point-no-context))))
+  (let ((props (org-element-at-point-no-context)))
     `(,(org-format-outline-path
         (org-get-outline-path t t)
         org-backlinks-width
@@ -187,10 +187,10 @@ and `:custom_id'."
         "/")
       (:tags      ,(org-get-tags)
        :buffer    ,(buffer-name)
-       :begin     ,(plist-get props :begin)
-       :end       ,(plist-get props :end)
-       :id        ,(plist-get props :ID) ;;(org-id-get)
-       :custom_id ,(plist-get props :CUSTOM_ID)))))  ;;(org-entry-get (point) "CUSTOM_ID")))))
+       :begin     ,(org-element-property :begin props)
+       :end       ,(org-element-property :end props)
+       :id        ,(org-element-property :ID props)
+       :custom_id ,(org-element-property :CUSTOM_ID props)))))
 
 (defun org-backlinks-query (id)
   "Return the headings that link to an ID."
@@ -272,9 +272,8 @@ and `:custom_id'."
     (mapcar #'org-backlinks-get-heading-info-by-custom-id
             (org-backlinks-collect-heading-links bound)))))
 
-(defun org-backlinks-parse-direct-links (id)
-  "List of headings whose backlink is the current heading ID.
-This is a list of links from current heading to other headings."
+(defun org-backlinks-parse-direct-links ()
+  "List of links from current heading to other headings."
   (let ((point (point))
         (current-heading (save-excursion
                            (org-back-to-heading)
@@ -325,7 +324,7 @@ This is a list of links from current heading to other headings."
     (if (not org-backlinks-list)
         (message "There are no links to this entry."))
     (if org-backlinks-show-direct-links
-        (org-backlinks-parse-direct-links id))))
+        (org-backlinks-parse-direct-links))))
 
 (defun org-backlinks-all-list ()
   "Return a list with all possible links."
