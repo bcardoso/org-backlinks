@@ -203,9 +203,9 @@ and `:custom_id'."
   (org-mark-ring-push)
   (switch-to-buffer-other-window (plist-get (car heading) :buffer))
   (goto-char (plist-get (car heading) :begin))
-  (org-show-context)
-  (org-show-entry)
-  (org-show-children)
+  (org-fold-show-context)
+  (org-fold-show-entry)
+  (org-fold-show-children)
   (recenter org-backlinks-recenter))
 
 (defun org-backlinks-uniq (list)
