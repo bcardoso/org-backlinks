@@ -129,10 +129,11 @@ relative to the selected window. See `recenter'."
    (mapcar #'file-truename
            (cond ((eq org-backlinks-files 'agenda)
                   (org-agenda-files))
-                 ((eq org-backlinks-files 'buffers)
-                  (org-buffer-list))
                  ((eq org-backlinks-files 'org-files-list)
                   (org-files-list))
+                 ((eq org-backlinks-files 'buffers)
+                  (delete nil (mapcar #'buffer-file-name
+                                      (org-buffer-list 'files t))))
                  (t
                   org-backlinks-files)))))
 
