@@ -64,8 +64,12 @@ current heading's backlinks."
   :type 'boolean)
 
 (defcustom org-backlinks-show-direct-links nil
-  "If non-nil, show the direct and indirect links to other headings
-present in the current Org heading."
+  "If non-nil, show the direct links to other headings in current heading."
+  :group 'org-backlinks
+  :type 'boolean)
+
+(defcustom org-backlinks-show-indirect-links nil
+  "If non-nil, show the indirect links to other headings in current heading."
   :group 'org-backlinks
   :type 'boolean)
 
@@ -280,13 +284,13 @@ and `:custom_id'."
                            (org-back-to-heading)
                            (org-backlinks-get-heading-info))))
     (org-backlinks-build-list
-     t
+     org-backlinks-show-direct-links
      org-backlinks-direct-list
      (org-backlinks-direct-headings (plist-get (cadr current-heading) :end))
      nil)
 
     (org-backlinks-build-list
-     t
+     org-backlinks-show-indirect-links
      org-backlinks-indirect-list
      (org-backlinks-uniq
       (let ((indirect nil))
@@ -315,13 +319,16 @@ and `:custom_id'."
 
 (defun org-backlinks-setup ()
   "Setup all links lists based on the ID of the current heading."
-  (let ((id (org-backlinks-get-heading-id)))
+  (setq org-backlinks-list          nil
+        org-backlinks-second-list   nil
+        org-backlinks-third-list    nil
+        org-backlinks-direct-list   nil
+        org-backlinks-indirect-list nil)
+  (let ((id (when (eq major-mode 'org-mode)
+              (org-backlinks-get-heading-id))))
     (if id
         (org-backlinks-parse id)
-      (message "Entry has no ID.")
-      (setq org-backlinks-list nil)
-      (setq org-backlinks-second-list nil)
-      (setq org-backlinks-third-list nil))
+      (message "Entry has no ID."))
     (if (not org-backlinks-list)
         (message "There are no links to this entry."))
     (if org-backlinks-show-direct-links
@@ -336,7 +343,7 @@ and `:custom_id'."
               org-backlinks-third-list)
           (if org-backlinks-show-direct-links
               org-backlinks-direct-list)
-          (if org-backlinks-show-direct-links
+          (if org-backlinks-show-indirect-links
               org-backlinks-indirect-list)))
 
 ;;;###autoload

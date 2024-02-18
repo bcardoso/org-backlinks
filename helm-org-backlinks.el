@@ -83,7 +83,7 @@
                                  "Direct links"
                                  (lambda () org-backlinks-direct-list))
 
-(helm-org-backlinks-build-source org-backlinks-show-direct-links
+(helm-org-backlinks-build-source org-backlinks-show-indirect-links
                                  helm-org-backlinks-indirect-source
                                  "Indirect links"
                                  (lambda () org-backlinks-indirect-list))
@@ -108,7 +108,7 @@
                             helm-org-backlinks-third-order-source)
                        ,(if org-backlinks-show-direct-links
                             helm-org-backlinks-direct-source)
-                       ,(if org-backlinks-show-direct-links
+                       ,(if org-backlinks-show-indirect-links
                             helm-org-backlinks-indirect-source))))))
 
 
