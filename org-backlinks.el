@@ -107,6 +107,7 @@ relative to the selected window. See `recenter'."
   :group 'org-backlinks
   :type 'integer)
 
+
 ;;;; Variables
 
 (defvar org-backlinks-list nil
@@ -147,13 +148,12 @@ This is a list whose CAR is the outline path of the current entry
 and CDR is a plist containing `:tags', `:buffer', `:begin', `:end', `:id'
 and `:custom_id'."
   (interactive)
-  (let ((props (org-element-at-point-no-context)))
-    `(,(org-format-outline-path
-        (org-get-outline-path t t)
-        org-backlinks-width
-        (format "%s:" (file-name-nondirectory (buffer-file-name)))
-        "/")
-      ( :buffer    ,(buffer-name)
+  (let ((props (org-element-at-point-no-context))
+        (buffer (buffer-name)))
+    `(,(org-format-outline-path (org-get-outline-path t t)
+                                org-backlinks-width
+                                (format "%s:" buffer "/"))
+      ( :buffer    ,buffer
         ;; :begin     ,(org-element-property :begin props)
         ;; :end       ,(org-element-property :end props)
         :begin     ,(org-entry-beginning-position)
