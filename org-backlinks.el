@@ -161,32 +161,34 @@ and `:custom_id'."
         :id        ,(org-element-property :ID props)
         :custom_id ,(org-element-property :CUSTOM_ID props)))))
 
-(defun org-backlinks-get-heading-by-id (id)
+(defun org-backlinks-get-heading-id (&optional heading)
+  "Return ID of HEADING with a prefix.
+Note that the CUSTOM_ID property has priority over the ID property."
+  (interactive)
+  (let ((custom-id (or (plist-get (cadr heading) :custom_id)
+                       (org-entry-get (point) "CUSTOM_ID")))
+        (id (or (plist-get (cadr heading) :id)
+                (org-id-get))))
+    (cond (custom-id (concat org-backlinks-prefix-custom-id custom-id))
+          (id (concat org-backlinks-prefix-id id)))))
+
+(defun org-backlinks-find-heading (id)
   "Return the relevant information about the Org heading with ID."
   (org-ql-query
-    :from (org-backlinks-files)
     :select #'org-backlinks-get-heading
+    :from (org-backlinks-files)
     :where
     `(or (and (property "ID")
               (string-match ,id (org-entry-get (point) "ID")))
          (and (property "CUSTOM_ID")
               (string-match ,id (org-entry-get (point) "CUSTOM_ID"))))))
 
-(defun org-backlinks-get-id (&optional heading)
-  "Return the current Org heading CUSTOM_ID or ID with a prefix.
-Note that the CUSTOM_ID property has priority over the ID property."
-  (interactive)
-  (let ((id (or (plist-get (cadr heading) :id)
-                (org-id-get)))
-        (custom-id (or (plist-get (cadr heading) :custom_id)
-                       (org-entry-get (point) "CUSTOM_ID"))))
-    (cond (custom-id (concat org-backlinks-prefix-custom-id custom-id))
-          (id (concat org-backlinks-prefix-id id)))))
-
-(defun org-backlinks-query (id)
-  "Return a list of headings with a link to ID."
-  (org-ql-select (org-backlinks-files)
-    id :action #'org-backlinks-get-heading))
+(defun org-backlinks-find-links (id)
+  "Return a list of headings with links to ID."
+  (org-ql-query
+    :select #'org-backlinks-get-heading
+    :from (org-backlinks-files)
+    :where `(rifle id)))
 
 (defun org-backlinks-unique (list)
   "Return a unique list of elements from LIST."
@@ -201,7 +203,8 @@ Note that the CUSTOM_ID property has priority over the ID property."
   "Return a unique list of headings with links to headings in HEADINGS-LIST."
   (org-backlinks-unique
    (mapcar (lambda (heading)
-             (org-backlinks-query (org-backlinks-get-id heading)))
+             (org-backlinks-find-links
+              (org-backlinks-get-heading-id heading)))
            headings-list)))
 
 
@@ -231,24 +234,29 @@ Note that the CUSTOM_ID property has priority over the ID property."
 
 ;;;; Setup
 
-(cl-defun org-backlinks-setup-near (heading)
-  "Near links *in* and *to* HEADING."
+(defun org-backlinks-find-near-links (heading)
+  "Find near links *in* and *to* HEADING.
+Near links are backlinks to HEADING or direct links present in HEADING.
+Return `org-backlinks-list'."
   ;; backlinks
-  (if-let (id (org-backlinks-get-id heading))
+  (if-let (id (org-backlinks-get-heading-id heading))
       (setq org-backlinks-list
             (org-backlinks-build-list
-             (org-backlinks-query id)
+             (org-backlinks-find-links id)
              (list heading)))
     (message "Entry has no ID."))
   ;; direct links
   (setq org-backlinks-direct-list
         (when org-backlinks-show-direct-links
           (org-backlinks-unique
-           (mapcar #'org-backlinks-get-heading-by-id
-                   (org-backlinks-get-heading-links heading))))))
+           (mapcar #'org-backlinks-find-heading
+                   (org-backlinks-get-heading-links heading)))))
+  org-backlinks-list)
 
-(defun org-backlinks-setup-far (heading)
-  "Far links *in* and *to* HEADING."
+;; REVIEW 2024-03-10: docstring
+(defun org-backlinks-find-distant-links (heading)
+  "Find distant links related to HEADING.
+Distant links are second and third order backlinks, and indirect links."
   (setq org-backlinks-second-list
         (when (and org-backlinks-show-second-order-backlinks
                    org-backlinks-list)
@@ -266,13 +274,13 @@ Note that the CUSTOM_ID property has priority over the ID property."
                    org-backlinks-direct-list)
           (org-backlinks-build-list
            (org-backlinks-unique
-            (mapcar #'org-backlinks-get-heading-by-id
+            (mapcar #'org-backlinks-find-heading
                     (flatten-tree (mapcar #'org-backlinks-get-heading-links
                                           org-backlinks-direct-list))))
            (append heading org-backlinks-direct-list)))))
 
 (defun org-backlinks-setup ()
-  "List of Org headings with links to current heading."
+  "Setup `org-backlinks' lists."
   (setq org-backlinks-list          nil
         org-backlinks-second-list   nil
         org-backlinks-third-list    nil
@@ -282,10 +290,10 @@ Note that the CUSTOM_ID property has priority over the ID property."
       (save-excursion
         (org-back-to-heading)
         (let ((heading (org-backlinks-get-heading)))
-          (org-backlinks-setup-near heading)
+          (org-backlinks-find-near-links heading)
           (when (not org-backlinks-list)
             (message "There are no links to this entry."))
-          (org-backlinks-setup-far heading)))
+          (org-backlinks-find-distant-links heading)))
     (message "Not an Org buffer.")))
 
 (defun org-backlinks-all-list ()
