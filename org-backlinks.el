@@ -196,7 +196,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
                         :test #'equal :key #'car :from-end t))
 
 (defun org-backlinks-build-list (headings-list exclude-list)
-  "Build a list from HEADINGS-LIST without entries from EXCLUDE-LIST."
+  "Build a list from HEADINGS-LIST excluding entries from EXCLUDE-LIST."
   (cl-set-difference headings-list exclude-list :test #'equal))
 
 (defun org-backlinks-parse (headings-list)
@@ -253,7 +253,6 @@ Return `org-backlinks-list'."
                    (org-backlinks-get-heading-links heading)))))
   org-backlinks-list)
 
-;; REVIEW 2024-03-10: docstring
 (defun org-backlinks-find-distant-links (heading)
   "Find distant links related to HEADING.
 Distant links are second and third order backlinks, and indirect links."
