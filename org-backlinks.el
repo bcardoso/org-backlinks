@@ -210,7 +210,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
 (defun org-backlinks-search-link (bound)
   "Return the ID or CUSTOM_ID in an Org link. BOUND is the end of heading."
   (let ((start (re-search-forward "\\[\\[\\(id:\\|.*::#\\)" bound t))
-        (end (re-search-forward "\\(\\]\\[\\|\\]\\]\\)" nil t)))
+        (end (re-search-forward "\\(\\]\\[\\|\\]\\]\\)" bound t)))
     (goto-char (+ 1 (point)))
     (if start
         (buffer-substring-no-properties start (- end 2)))))
@@ -234,7 +234,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
 (cl-defun org-backlinks-setup-near (heading)
   "Near links *in* and *to* HEADING."
   ;; backlinks
-  (if-let (id (org-backlinks-get-id))
+  (if-let (id (org-backlinks-get-id heading))
       (setq org-backlinks-list
             (org-backlinks-build-list
              (org-backlinks-query id)
