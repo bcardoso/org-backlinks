@@ -33,60 +33,50 @@
 (require 'org-backlinks)
 
 
+;;;; Custom variables
+
+(defcustom helm-org-backlinks-actions
+  (helm-make-actions
+   "Go to heading" 'org-backlinks-goto-heading)
+  "Actions for `helm-org-backlinks' sources."
+  :group 'org-backlinks
+  :type 'sexp)
+
+
 ;;;; Sources
 
-(defvar helm-org-backlinks-source nil
+(defmacro helm-org-backlinks-build-source (name candidates)
+  "Building Helm source NAME with CANDIDATES."
+  (declare (indent defun))
+  `(when ,candidates
+     (helm-build-sync-source ,name
+       :action helm-org-backlinks-actions
+       :candidates ,candidates)))
+
+(defvar helm-org-backlinks-source
+  (helm-org-backlinks-build-source "Backlinks"
+    (lambda () org-backlinks-list))
   "Helm source for Org backlinks.")
 
-(defvar helm-org-backlinks-second-order-source nil
+(defvar helm-org-backlinks-second-order-source
+  (helm-org-backlinks-build-source "2nd order Backlinks"
+    (lambda () org-backlinks-second-list))
   "Helm source for second order Org backlinks.")
 
-(defvar helm-org-backlinks-third-order-source nil
+(defvar helm-org-backlinks-third-order-source
+  (helm-org-backlinks-build-source "3rd order Backlinks"
+    (lambda () org-backlinks-third-list))
   "Helm source for third order Org backlinks.")
 
-(defvar helm-org-backlinks-direct-source nil
+(defvar helm-org-backlinks-direct-source
+  (helm-org-backlinks-build-source "Direct links"
+    (lambda () org-backlinks-direct-list))
   "Helm source for the direct links from current heading.")
 
-(defvar helm-org-backlinks-indirect-source nil
+(defvar helm-org-backlinks-indirect-source
+  (helm-org-backlinks-build-source "Indirect links"
+    (lambda () org-backlinks-indirect-list))
   "Helm source for the indirect links from current heading.")
-
-
-;;;; Build source
-
-(defmacro helm-org-backlinks-build-source (switch source name candidates)
-  "Macro for building `helm-org-backlinks' sources."
-  `(if ,switch
-       (setq ,source
-             (if ,candidates
-                 (helm-build-sync-source ,name
-                   :action '(("Go to heading" . org-backlinks-goto-heading))
-                   :candidates ,candidates)))
-     (setq ,source nil)))
-
-(helm-org-backlinks-build-source t
-                                 helm-org-backlinks-source
-                                 "Backlinks"
-                                 (lambda () org-backlinks-list))
-
-(helm-org-backlinks-build-source org-backlinks-show-second-order-backlinks
-                                 helm-org-backlinks-second-order-source
-                                 "2nd order Backlinks"
-                                 (lambda () org-backlinks-second-list))
-
-(helm-org-backlinks-build-source org-backlinks-show-third-order-backlinks
-                                 helm-org-backlinks-third-order-source
-                                 "3rd order Backlinks"
-                                 (lambda () org-backlinks-third-list))
-
-(helm-org-backlinks-build-source org-backlinks-show-direct-links
-                                 helm-org-backlinks-direct-source
-                                 "Direct links"
-                                 (lambda () org-backlinks-direct-list))
-
-(helm-org-backlinks-build-source org-backlinks-show-indirect-links
-                                 helm-org-backlinks-indirect-source
-                                 "Indirect links"
-                                 (lambda () org-backlinks-indirect-list))
 
 
 ;;;; Commands
@@ -101,15 +91,11 @@
     (when (org-backlinks-all-list)
       (helm :prompt "Go to heading: "
             :truncate-lines nil
-            :sources `(helm-org-backlinks-source
-                       ,(if org-backlinks-show-second-order-backlinks
-                            helm-org-backlinks-second-order-source)
-                       ,(if org-backlinks-show-third-order-backlinks
-                            helm-org-backlinks-third-order-source)
-                       ,(if org-backlinks-show-direct-links
-                            helm-org-backlinks-direct-source)
-                       ,(if org-backlinks-show-indirect-links
-                            helm-org-backlinks-indirect-source))))))
+            :sources '(helm-org-backlinks-source
+                       helm-org-backlinks-second-order-source
+                       helm-org-backlinks-third-order-source
+                       helm-org-backlinks-direct-source
+                       helm-org-backlinks-indirect-source)))))
 
 
 (provide 'helm-org-backlinks)
