@@ -1,10 +1,10 @@
 ;;; helm-org-backlinks.el --- Helm interface for Org backlinks -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022-2023 Bruno Cardoso
+;; Copyright (C) 2022-2024 Bruno Cardoso
 
 ;; Author: Bruno Cardoso <cardoso.bc@gmail.com>
 ;; URL: https://github.com/bcardoso/org-backlinks
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "27.2"))
 
 ;; This file is NOT part of GNU Emacs.
