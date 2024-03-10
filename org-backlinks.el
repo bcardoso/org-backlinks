@@ -184,7 +184,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
           (id (concat org-backlinks-prefix-id id)))))
 
 (defun org-backlinks-query (id)
-  "Return a list of headings that link to heading ID."
+  "Return a list of headings with a link to ID."
   (org-ql-select (org-backlinks-files)
     id :action #'org-backlinks-get-heading))
 
