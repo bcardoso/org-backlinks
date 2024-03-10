@@ -188,7 +188,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
   (org-ql-query
     :select #'org-backlinks-get-heading
     :from (org-backlinks-files)
-    :where `(rifle id)))
+    :where `(rifle ,id)))
 
 (defun org-backlinks-unique (list)
   "Return a unique list of elements from LIST."
