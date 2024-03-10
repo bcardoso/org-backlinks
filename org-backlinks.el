@@ -318,10 +318,9 @@ Distant links are second and third order backlinks, and indirect links."
   "Command for selection Org headings with `completing-read'."
   (interactive)
   (org-backlinks-setup)
-  (let ((link-list (org-backlinks-all-list)))
-    (when link-list
-      (let ((heading (completing-read "Go to heading: " link-list)))
-        (org-backlinks-goto-heading (cdr (assoc heading link-list)))))))
+  (when-let ((link-list (org-backlinks-all-list)))
+    (let ((heading (completing-read "Go to heading: " link-list)))
+      (org-backlinks-goto-heading (cdr (assoc heading link-list))))))
 
 
 (provide 'org-backlinks)
