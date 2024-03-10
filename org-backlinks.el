@@ -197,7 +197,6 @@ Note that the CUSTOM_ID property has priority over the ID property."
   "Build a list from HEADINGS-LIST without entries from EXCLUDE-LIST."
   (cl-set-difference headings-list exclude-list :test #'equal))
 
-;; NOTE 2024-03-09: why we are not using prefixes here?
 (defun org-backlinks-parse (headings-list)
   "Return a unique list of headings with links to headings in HEADINGS-LIST."
   (org-backlinks-unique
@@ -241,8 +240,6 @@ Note that the CUSTOM_ID property has priority over the ID property."
              (org-backlinks-query id)
              (list heading)))
     (message "Entry has no ID."))
-  (when (not org-backlinks-list)
-    (message "There are no links to this entry."))
   ;; direct links
   (setq org-backlinks-direct-list
         (when org-backlinks-show-direct-links
@@ -286,6 +283,8 @@ Note that the CUSTOM_ID property has priority over the ID property."
         (org-back-to-heading)
         (let ((heading (org-backlinks-get-heading)))
           (org-backlinks-setup-near heading)
+          (when (not org-backlinks-list)
+            (message "There are no links to this entry."))
           (org-backlinks-setup-far heading)))
     (message "Not in an Org buffer")))
 
@@ -293,14 +292,10 @@ Note that the CUSTOM_ID property has priority over the ID property."
   "Return a list with all possible links."
   (delete-dups
    (append org-backlinks-list
-           (if org-backlinks-show-second-order-backlinks
-               org-backlinks-second-list)
-           (if org-backlinks-show-third-order-backlinks
-               org-backlinks-third-list)
-           (if org-backlinks-show-direct-links
-               org-backlinks-direct-list)
-           (if org-backlinks-show-indirect-links
-               org-backlinks-indirect-list))))
+           org-backlinks-second-list
+           org-backlinks-third-list
+           org-backlinks-direct-list
+           org-backlinks-indirect-list)))
 
 (defun org-backlinks-goto-heading (heading)
   "Go to HEADING."
