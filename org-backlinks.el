@@ -286,7 +286,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
           (when (not org-backlinks-list)
             (message "There are no links to this entry."))
           (org-backlinks-setup-far heading)))
-    (message "Not in an Org buffer")))
+    (message "Not an Org buffer.")))
 
 (defun org-backlinks-all-list ()
   "Return a list with all possible links."
@@ -310,13 +310,11 @@ Note that the CUSTOM_ID property has priority over the ID property."
 (defun org-backlinks ()
   "Command for selection Org headings with `completing-read'."
   (interactive)
-  (if (not (eq major-mode 'org-mode))
-      (message "Not an Org buffer.")
-    (org-backlinks-setup)
-    (let ((link-list (org-backlinks-all-list)))
-      (when link-list
-        (let ((heading (completing-read "Go to heading: " link-list)))
-          (org-backlinks-goto-heading (cdr (assoc heading link-list))))))))
+  (org-backlinks-setup)
+  (let ((link-list (org-backlinks-all-list)))
+    (when link-list
+      (let ((heading (completing-read "Go to heading: " link-list)))
+        (org-backlinks-goto-heading (cdr (assoc heading link-list)))))))
 
 
 (provide 'org-backlinks)
