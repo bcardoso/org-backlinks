@@ -5,7 +5,7 @@
 ;; Author: Bruno Cardoso <cardoso.bc@gmail.com>
 ;; URL: https://github.com/bcardoso/org-backlinks
 ;; Version: 0.2
-;; Package-Requires: ((emacs "27.2"))
+;; Package-Requires: ((emacs "29.1"))
 
 ;; This file is NOT part of GNU Emacs.
 
