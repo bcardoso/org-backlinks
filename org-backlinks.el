@@ -315,7 +315,8 @@ Distant links are second and third order backlinks, and indirect links."
   (org-mark-ring-push)
   (switch-to-buffer-other-window (plist-get (car heading) :buffer))
   (goto-char (plist-get (car heading) :begin))
-  (org-fold-show-subtree)
+  (org-fold-show-entry)
+  (org-fold-show-children)
   (recenter org-backlinks-recenter))
 
 ;;;###autoload
