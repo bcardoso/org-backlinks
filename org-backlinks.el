@@ -256,18 +256,21 @@ Return `org-backlinks-list'."
 (defun org-backlinks-find-distant-links (heading)
   "Find distant links related to HEADING.
 Distant links are second and third order backlinks, and indirect links."
+  ;; second order links
   (setq org-backlinks-second-list
         (when (and org-backlinks-show-second-order-backlinks
                    org-backlinks-list)
           (org-backlinks-build-list
            (org-backlinks-parse org-backlinks-list)
            (append heading org-backlinks-list))))
+  ;; third order links
   (setq org-backlinks-third-list
         (when (and org-backlinks-show-third-order-backlinks
                    org-backlinks-second-list)
           (org-backlinks-build-list
            (org-backlinks-parse org-backlinks-second-list)
            (append heading org-backlinks-list org-backlinks-second-list))))
+  ;; indirect links
   (setq org-backlinks-indirect-list
         (when (and org-backlinks-show-indirect-links
                    org-backlinks-direct-list)
