@@ -297,8 +297,8 @@ Distant links are second and third order backlinks, and indirect links."
           (org-backlinks-find-near-links heading)
           (when (not org-backlinks-list)
             (message "There are no links to this entry."))
-          (org-backlinks-find-distant-links heading)))
-    (message "Not an Org heading at point.")))
+          (org-backlinks-find-distant-links heading))
+      (message "Not an Org heading at point."))))
 
 (defun org-backlinks-all-list ()
   "Return a list with all possible links."
