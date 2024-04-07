@@ -44,6 +44,8 @@
 
 (require 'org-ql)
 
+(declare-function org-ql--normalize-query "org-ql")
+
 
 ;;;; Custom variables
 
