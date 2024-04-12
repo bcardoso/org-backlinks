@@ -154,7 +154,7 @@ and `:custom_id'."
         (buffer (buffer-name)))
     `(,(org-format-outline-path (org-get-outline-path t t)
                                 org-backlinks-width
-                                (format "%s:/" buffer))
+                                (format "%s:" buffer))
       ( :buffer    ,buffer
         ;; :begin     ,(org-element-property :begin props)
         ;; :end       ,(org-element-property :end props)
