@@ -28,7 +28,8 @@ Clone this repo and add it to your =load-path=:
 #+begin_src emacs-lisp
 (add-to-list 'load-path "/path/to/org-backlinks")
 (require 'org-backlinks)
-(require 'helm-org-backlinks) ; optional helm interface
+(require 'helm-org-backlinks)    ; optional Helm interface
+(require 'consult-org-backlinks) ; optional Consult interface
 #+end_src
 
 Or, with use-package + straight.el:
@@ -39,11 +40,17 @@ Or, with use-package + straight.el:
                            :files ("org-backlinks.el"))
   :bind ("C-c z" . org-backlinks))
 
-;; optional helm interface
+;; optional Helm interface
 (use-package helm-org-backlinks
   :straight (helm-org-backlinks :host github :repo "bcardoso/org-backlinks"
                                 :files ("helm-org-backlinks.el"))
   :bind ("C-c z" . helm-org-backlinks))
+
+;; optional Consult interface
+(use-package consult-org-backlinks
+  :straight (consult-org-backlinks :host github :repo "bcardoso/org-backlinks"
+                                   :files ("consult-org-backlinks.el"))
+  :bind ("C-c z" . consult-org-backlinks))
 #+end_src
 
 
@@ -51,7 +58,7 @@ Or, with use-package + straight.el:
 
 Just run =M-x org-backlinks= or with the suggested binding =C-c z= in a Org heading.
 
-Or, if you are a Helm user, run =M-x helm-org-backlinks=.
+Or run your preferred command: =M-x helm-org-backlinks= or =M-x consult-org-backlinks=.
 
 =org-backlinks= will search the files defined by =org-backlinks-files= for the CUSTOM_ID or the ID of the current Org heading.
 
@@ -61,4 +68,11 @@ The other customizable variables are accessible through the customize interface:
 
 - =M-x customize-group RET org-backlinks=.
 
+For an all-purpose Org heading hopping interface, see [[https://github.com/bcardoso/org-hop][org-hop]].
 
+
+** Changelog
+
+- v0.2.0 :: add [[https://github.com/minad/consult/][consult]] support.
+
+- v0.1.0 :: initial concept & [[https://github.com/emacs-helm/helm][helm]] interface.
