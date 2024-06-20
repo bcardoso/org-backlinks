@@ -38,12 +38,12 @@
 
 (defmacro consult-org-backlinks-build-source (name narrow items)
   (declare (indent defun))
-  `(list :name ,(propertize name 'face 'shadow)
-         :prompt "Go to heading: "
-         :narrow ,narrow
+  `(list :name     ,name
+         :prompt   "Go to heading: "
+         :narrow   ,narrow
          :category 'org-heading
-         :action #'org-backlinks-goto-heading
-         :items (lambda () (mapcar #'car ,items))))
+         :action   #'org-backlinks-goto-heading
+         :items    (lambda () (mapcar #'car ,items))))
 
 (defvar consult-org-backlinks-source
   (consult-org-backlinks-build-source
