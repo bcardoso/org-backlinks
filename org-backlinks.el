@@ -109,6 +109,11 @@ relative to the selected window. See `recenter'."
   :group 'org-backlinks
   :type 'integer)
 
+(defface org-backlinks-file-face
+  '((t (:inherit (shadow))))
+  "Face for the file name part of the candidate."
+  :group 'org-backlinks)
+
 
 ;;;; Variables
 
@@ -153,9 +158,16 @@ and CDR is a plist containing `:marker', `:buffer', `:begin', `:end',
   (let* ((heading (or current-heading (org-element-at-point-no-context)))
          (marker (point-marker))
          (buffer (org-element-property :buffer heading))
-         (candidate (org-format-outline-path (org-get-outline-path t t)
-                                             org-backlinks-width
-                                             (format "%s:" buffer))))
+         (candidate
+          (concat (org-format-outline-path
+                   (org-get-outline-path t t)
+                   org-backlinks-width
+                   (propertize (format "%s:" buffer)
+                               'face 'org-backlinks-file-face))
+                  " "
+                  (propertize (org-make-tag-string
+                               (org-element-property :tags heading))
+                              'face 'org-tag))))
     (put-text-property 0 1 'org-marker marker candidate)
     (cons candidate
           (list :marker    marker
