@@ -144,35 +144,37 @@ relative to the selected window. See `recenter'."
                  (t
                   org-backlinks-files)))))
 
-(defun org-backlinks-get-heading ()
+(defun org-backlinks-get-heading (&optional current-heading)
   "Return the relevant information about the current Org heading.
 This is a list whose CAR is the outline path of the current entry
-and CDR is a plist containing `:tags', `:buffer', `:begin', `:end', `:id'
-and `:custom_id'."
+and CDR is a plist containing `:marker', `:buffer', `:begin', `:end',
+`:id', and `:custom_id'."
   (interactive)
-  (let ((props (org-element-at-point-no-context))
-        (buffer (buffer-name)))
-    `(,(org-format-outline-path (org-get-outline-path t t)
-                                org-backlinks-width
-                                (format "%s:" buffer))
-      ( :buffer    ,buffer
-        ;; :begin     ,(org-element-property :begin props)
-        ;; :end       ,(org-element-property :end props)
-        :begin     ,(org-entry-beginning-position)
-        :end       ,(org-entry-end-position)
-        :id        ,(org-element-property :ID props)
-        :custom_id ,(org-element-property :CUSTOM_ID props)))))
+  (let* ((heading (or current-heading (org-element-at-point-no-context)))
+         (marker (point-marker))
+         (buffer (org-element-property :buffer heading))
+         (candidate (org-format-outline-path (org-get-outline-path t t)
+                                             org-backlinks-width
+                                             (format "%s:" buffer))))
+    (put-text-property 0 1 'org-marker marker candidate)
+    (cons candidate
+          (list :marker    marker
+                :buffer    buffer
+                :begin     (org-element-property :begin heading)
+                :end       (org-element-property :end heading)
+                :id        (org-element-property :ID heading)
+                :custom_id (org-element-property :CUSTOM_ID heading)))))
 
-(defun org-backlinks-get-heading-id (&optional heading)
-  "Return ID of HEADING with a prefix.
+  (defun org-backlinks-get-heading-id (&optional heading)
+    "Return ID of HEADING with a prefix.
 Note that the CUSTOM_ID property has priority over the ID property."
-  (interactive)
-  (let ((custom-id (or (plist-get (cadr heading) :custom_id)
-                       (org-entry-get (point) "CUSTOM_ID")))
-        (id (or (plist-get (cadr heading) :id)
-                (org-id-get))))
-    (cond (custom-id (concat org-backlinks-prefix-custom-id custom-id))
-          (id (concat org-backlinks-prefix-id id)))))
+    (interactive)
+    (let ((custom-id (or (plist-get (cdr heading) :custom_id)
+                         (org-entry-get (point) "CUSTOM_ID")))
+          (id (or (plist-get (cdr heading) :id)
+                  (org-id-get))))
+      (cond (custom-id (concat org-backlinks-prefix-custom-id custom-id))
+            (id (concat org-backlinks-prefix-id id)))))
 
 (defun org-backlinks-find-heading (id)
   "Return the relevant information about the Org heading with ID."
@@ -222,9 +224,9 @@ Note that the CUSTOM_ID property has priority over the ID property."
 
 (defun org-backlinks-get-heading-links (heading)
   "Return a list of IDs or CUSTOM_IDs present in HEADING."
-  (let* ((buffer (plist-get (cadr heading) :buffer))
-         (begin (plist-get (cadr heading) :begin))
-         (end (plist-get (cadr heading) :end))
+  (let* ((buffer (plist-get (cdr heading) :buffer))
+         (begin (plist-get (cdr heading) :begin))
+         (end (plist-get (cdr heading) :end))
          (links))
     (with-current-buffer buffer
       (org-with-wide-buffer
@@ -291,18 +293,15 @@ Distant links are second and third order backlinks, and indirect links."
         org-backlinks-direct-list   nil
         org-backlinks-indirect-list nil)
   (save-excursion
-    (if (and (eq major-mode 'org-mode)
-             (or (org-at-heading-p)
-                 (and (re-search-backward org-heading-regexp nil t)
-                      (org-at-heading-p))))
+    (if (and (derived-mode-p 'org-mode) (org-back-to-heading t))
         (let ((heading (org-backlinks-get-heading)))
           (org-backlinks-find-near-links heading)
-          (when (not org-backlinks-list)
+          (unless org-backlinks-list
             (message "There are no links to this entry."))
           (org-backlinks-find-distant-links heading))
-      (message "Not an Org heading at point."))))
+      (user-error "Not an Org heading at point"))))
 
-(defun org-backlinks-all-list ()
+(defun org-backlinks-list-all ()
   "Return a list with all possible links."
   (delete-dups
    (append org-backlinks-list
@@ -314,19 +313,28 @@ Distant links are second and third order backlinks, and indirect links."
 (defun org-backlinks-goto-heading (heading)
   "Go to HEADING."
   (interactive)
-  (org-mark-ring-push)
-  (switch-to-buffer-other-window (plist-get (car heading) :buffer))
-  (goto-char (plist-get (car heading) :begin))
-  (org-fold-show-entry)
-  (org-fold-show-children)
-  (recenter org-backlinks-recenter))
+  (let* ((marker (or (and (listp heading)
+                          (plist-get heading :marker))
+                     (get-text-property 0 'org-marker heading)))
+         (buffer (or (and (listp heading)
+                          (plist-get heading :buffer))
+                     (marker-buffer marker)))
+         (position (or (and (listp heading)
+                            (plist-get heading :begin))
+                       (marker-position marker))))
+    (org-mark-ring-push)
+    (switch-to-buffer-other-window buffer)
+    (goto-char position)
+    (org-fold-show-entry)
+    (org-fold-show-children)
+    (recenter org-backlinks-recenter)))
 
 ;;;###autoload
 (defun org-backlinks ()
   "Command for selection Org headings with `completing-read'."
   (interactive)
   (org-backlinks-setup)
-  (when-let ((link-list (org-backlinks-all-list)))
+  (when-let ((link-list (org-backlinks-list-all)))
     (let ((heading (completing-read "Go to heading: " link-list)))
       (org-backlinks-goto-heading (cdr (assoc heading link-list))))))
 
