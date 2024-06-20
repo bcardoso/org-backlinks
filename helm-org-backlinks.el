@@ -29,8 +29,8 @@
 
 ;;; Code:
 
-(require 'helm)
 (require 'org-backlinks)
+(require 'helm)
 
 
 ;;;; Custom variables
@@ -46,12 +46,12 @@
 ;;;; Sources
 
 (defmacro helm-org-backlinks-build-source (name candidates)
-  "Building Helm source NAME with CANDIDATES."
+  "Build Helm source NAME with CANDIDATES."
   (declare (indent defun))
   `(when ,candidates
      (helm-build-sync-source ,name
-       :action helm-org-backlinks-actions
-       :candidates ,candidates)))
+                             :action helm-org-backlinks-actions
+                             :candidates ,candidates)))
 
 (defvar helm-org-backlinks-source
   (helm-org-backlinks-build-source "Backlinks"
@@ -86,7 +86,7 @@
   "Helm interface for `org-backlinks'."
   (interactive)
   (org-backlinks-setup)
-  (when (org-backlinks-all-list)
+  (when (org-backlinks-list-all)
     (helm :prompt "Go to heading: "
           :truncate-lines nil
           :sources '(helm-org-backlinks-source
