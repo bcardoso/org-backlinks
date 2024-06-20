@@ -68,7 +68,24 @@ The other customizable variables are accessible through the customize interface:
 
 - =M-x customize-group RET org-backlinks=.
 
-For an all-purpose Org heading hopping interface, see [[https://github.com/bcardoso/org-hop][org-hop]].
+
+** Integration
+
+=org-backlinks= sources can be easily integrated into other Helm or Consult commands.
+
+For example, this is how I integrate a simple backlink source into [[https://github.com/bcardoso/org-hop][org-hop]], my all-purpose Org heading hopping interface:
+
+#+begin_src emacs-lisp
+;; Consult interface
+(require 'consult-org-backlinks)
+(advice-add 'consult-org-hop :before #'org-backlinks-setup-simple)
+(add-to-list 'consult-org-hop-sources 'consult-org-backlinks-source)
+
+;; Helm inferface
+(require 'helm-org-backlinks)
+(advice-add 'helm-org-hop :before #'org-backlinks-setup-simple)
+(add-to-list 'helm-org-hop-default-sources 'helm-org-backlinks-source)
+#+end_src
 
 
 ** Changelog
