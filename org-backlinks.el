@@ -199,9 +199,11 @@ Note that the CUSTOM_ID property has priority over the ID property."
   (cl-remove-duplicates (apply 'append list)
                         :test #'equal :key #'car :from-end t))
 
-(defun org-backlinks-build-list (headings-list exclude-list)
-  "Build a list from HEADINGS-LIST excluding entries from EXCLUDE-LIST."
-  (cl-set-difference headings-list exclude-list :test #'equal))
+(defun org-backlinks-build-list (headings-list exclude-list &optional h)
+  "Return a list from HEADINGS-LIST excluding entries from EXCLUDE-LIST.
+When optional argument H is a heading, also exclude it from final list."
+  (let ((hlist (cl-set-difference headings-list exclude-list :test #'equal)))
+    (cl-remove h hlist :test #'equal)))
 
 (defun org-backlinks-parse (headings-list)
   "Return a unique list of headings with links to headings in HEADINGS-LIST."
@@ -243,7 +245,7 @@ Note that the CUSTOM_ID property has priority over the ID property."
 Near links are backlinks to HEADING or direct links present in HEADING.
 Return `org-backlinks-list'."
   ;; backlinks
-  (if-let (id (org-backlinks-get-heading-id heading))
+  (if-let ((id (org-backlinks-get-heading-id heading)))
       (setq org-backlinks-list
             (org-backlinks-build-list
              (org-backlinks-find-links id)
@@ -266,14 +268,16 @@ Distant links are second and third order backlinks, and indirect links."
                    org-backlinks-list)
           (org-backlinks-build-list
            (org-backlinks-parse org-backlinks-list)
-           (append heading org-backlinks-list))))
+           org-backlinks-list
+           heading)))
   ;; third order links
   (setq org-backlinks-third-list
         (when (and org-backlinks-show-third-order-backlinks
                    org-backlinks-second-list)
           (org-backlinks-build-list
            (org-backlinks-parse org-backlinks-second-list)
-           (append heading org-backlinks-list org-backlinks-second-list))))
+           (append org-backlinks-list org-backlinks-second-list)
+           heading)))
   ;; indirect links
   (setq org-backlinks-indirect-list
         (when (and org-backlinks-show-indirect-links
@@ -283,7 +287,8 @@ Distant links are second and third order backlinks, and indirect links."
             (mapcar #'org-backlinks-find-heading
                     (flatten-tree (mapcar #'org-backlinks-get-heading-links
                                           org-backlinks-direct-list))))
-           (append heading org-backlinks-direct-list)))))
+           org-backlinks-direct-list
+           heading))))
 
 (defun org-backlinks-setup ()
   "Setup `org-backlinks' lists."
