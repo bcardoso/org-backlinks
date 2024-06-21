@@ -310,7 +310,8 @@ Distant links are second and third order backlinks, and indirect links."
         org-backlinks-direct-list   nil
         org-backlinks-indirect-list nil)
   (save-excursion
-    (if (and (derived-mode-p 'org-mode) (org-back-to-heading t))
+    (if (and (derived-mode-p 'org-mode)
+             (ignore-errors (org-back-to-heading t)))
         (let ((heading (org-backlinks-get-heading)))
           (org-backlinks-find-near-links heading)
           (unless org-backlinks-list
