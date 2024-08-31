@@ -154,7 +154,6 @@ relative to the selected window. See `recenter'."
 This is a list whose CAR is the outline path of the current entry
 and CDR is a plist containing `:marker', `:buffer', `:begin', `:end',
 `:id', and `:custom_id'."
-  (interactive)
   (let* ((heading (or current-heading (org-element-at-point-no-context)))
          (marker (point-marker))
          (buffer (org-element-property :buffer heading))
@@ -179,7 +178,6 @@ and CDR is a plist containing `:marker', `:buffer', `:begin', `:end',
 
 (defun org-backlinks-get-heading-id (&optional heading)
   "Return a list of prefixed ID or CUSTOM_ID from HEADING."
-  (interactive)
   (let ((custom-id (or (plist-get (cdr heading) :custom_id)
                        (org-entry-get (point) "CUSTOM_ID")))
         (id (or (plist-get (cdr heading) :id) (org-id-get))))
