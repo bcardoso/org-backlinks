@@ -177,34 +177,33 @@ and CDR is a plist containing `:marker', `:buffer', `:begin', `:end',
                 :id        (org-element-property :ID heading)
                 :custom_id (org-element-property :CUSTOM_ID heading)))))
 
-  (defun org-backlinks-get-heading-id (&optional heading)
-    "Return ID of HEADING with a prefix.
-Note that the CUSTOM_ID property has priority over the ID property."
-    (interactive)
-    (let ((custom-id (or (plist-get (cdr heading) :custom_id)
-                         (org-entry-get (point) "CUSTOM_ID")))
-          (id (or (plist-get (cdr heading) :id)
-                  (org-id-get))))
-      (cond (custom-id (concat org-backlinks-prefix-custom-id custom-id))
-            (id (concat org-backlinks-prefix-id id)))))
-
-(defun org-backlinks-find-heading (id)
-  "Return the relevant information about the Org heading with ID."
-  (org-ql-query
-    :select #'org-backlinks-get-heading
-    :from (org-backlinks-files)
-    :where
-    `(or (and (property "ID")
-              (string-match ,id (org-entry-get (point) "ID")))
-         (and (property "CUSTOM_ID")
-              (string-match ,id (org-entry-get (point) "CUSTOM_ID"))))))
+(defun org-backlinks-get-heading-id (&optional heading)
+  "Return a list of prefixed ID or CUSTOM_ID from HEADING."
+  (interactive)
+  (let ((custom-id (or (plist-get (cdr heading) :custom_id)
+                       (org-entry-get (point) "CUSTOM_ID")))
+        (id (or (plist-get (cdr heading) :id) (org-id-get))))
+    (delete
+     nil
+     (list
+      (and custom-id (concat org-backlinks-prefix-custom-id custom-id))
+      (and id org-backlinks-prefix-id id)))))
 
 (defun org-backlinks-find-links (id)
   "Return a list of headings with links to ID."
   (org-ql-query
     :select #'org-backlinks-get-heading
     :from (org-backlinks-files)
-    :where `(rifle ,id)))
+    :where (if (length> id 1)
+               `(or (rifle ,(car id)) (rifle ,(cadr id)))
+             `(rifle ,(car id)))))
+
+(defun org-backlinks-find-heading (id)
+  "Return the relevant information about the Org heading with ID."
+  (org-ql-query
+    :select #'org-backlinks-get-heading
+    :from (org-backlinks-files)
+    :where `(or (property "ID" ,id) (property "CUSTOM_ID" ,id))))
 
 (defun org-backlinks-unique (list)
   "Return a unique list of elements from LIST."
@@ -259,9 +258,8 @@ Return `org-backlinks-list'."
   ;; backlinks
   (if-let ((id (org-backlinks-get-heading-id heading)))
       (setq org-backlinks-list
-            (org-backlinks-build-list
-             (org-backlinks-find-links id)
-             (list heading)))
+            (org-backlinks-build-list (org-backlinks-find-links id)
+                                      (list heading)))
     (message "Entry has no ID."))
   ;; direct links
   (setq org-backlinks-direct-list
