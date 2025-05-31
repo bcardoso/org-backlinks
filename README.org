@@ -102,11 +102,11 @@ Now suppose you have defined a custom link parameter (say, =my=) that depends on
 
 This way, for example, following a link like =my:123= would lead you to an Org heading where the value of property =MY_ID= is "123".
 
-(The actual implementation of such "follow function" is irrelevant for here, as it will not be called by =org-backlinks=. The important part is that the new link type must be set properly, so direct links can be found with =org-element-map=.)
+(The actual implementation of such "follow function" is irrelevant here, as it will not be called by =org-backlinks=. The important part is that the new link type must be set properly, so direct links can be found with =org-element-map=.)
 
-With enough links of this type among your notes, it might be useful to see the structure of backlinks and other indirect links for the current heading as if they were standard Org links.
+With enough links of this type among your notes, it might be useful to see the structure of backlinks and other indirect links for the current heading /as if/ they were standard Org links.
 
-To include this arbitrary link type along with the default =ID= and =CUSTOM_ID= properties, just add it to =org-backlinks-link-types=:
+To include an arbitrary link type along with the default =ID= and =CUSTOM_ID= properties, just add it to =org-backlinks-link-types=:
 
 #+begin_src emacs-lisp
 (add-to-list 'org-backlinks-link-types (cons "my" "MY_ID"))
@@ -115,8 +115,8 @@ To include this arbitrary link type along with the default =ID= and =CUSTOM_ID= 
 
 ** Changelog
 
-- v0.3.0 :: add support for arbitrary link types.
+- v0.3.0 :: Add support for arbitrary link types.
 
-- v0.2.0 :: add [[https://github.com/minad/consult/][consult]] support.
+- v0.2.0 :: Add [[https://github.com/minad/consult/][consult]] support.
 
-- v0.1.0 :: initial concept & [[https://github.com/emacs-helm/helm][helm]] interface.
+- v0.1.0 :: Initial concept & [[https://github.com/emacs-helm/helm][helm]] interface.
