@@ -66,7 +66,7 @@ Or run your preferred command: =M-x helm-org-backlinks= or =M-x consult-org-back
 
 Set =org-backlinks-show-direct-links= to =t= to see both the direct and indirect links to other headings.
 
-The other customizable variables are accessible through the customize interface:
+Other customizable variables are accessible through the customize interface:
 
 - =M-x customize-group RET org-backlinks=.
 
@@ -90,7 +90,32 @@ For example, this is how I integrate a simple backlink source into [[https://git
 #+end_src
 
 
+** Arbitrary link types
+
+By default, both =ID= and =CUSTOM_ID= properties are considered when searching for backlinks.
+
+Now suppose you have defined a custom link parameter (say, =my=) that depends on the values of an specific Org property (say, =MY_ID=).
+
+#+begin_src emacs-lisp
+(org-link-set-parameters "my" :follow #'my-follow-function)
+#+end_src
+
+This way, for example, following a link like =my:123= would lead you to an Org heading where the value of property =MY_ID= is "123".
+
+(The actual implementation of such "follow function" is irrelevant for here, as it will not be called by =org-backlinks=. The important part is that the new link type must be set properly, so direct links can be found with =org-element-map=.)
+
+With enough links of this type among your notes, it might be useful to see the structure of backlinks and other indirect links for the current heading as if they were standard Org links.
+
+To include this arbitrary link type along with the default =ID= and =CUSTOM_ID= properties, just add it to =org-backlinks-link-types=:
+
+#+begin_src emacs-lisp
+(add-to-list 'org-backlinks-link-types (cons "my" "MY_ID"))
+#+end_src
+
+
 ** Changelog
+
+- v0.3.0 :: add support for arbitrary link types.
 
 - v0.2.0 :: add [[https://github.com/minad/consult/][consult]] support.
 
