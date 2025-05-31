@@ -18,7 +18,7 @@ Direct links are the links to other headings present in the current heading. Ind
 
 [[file:diagram.png]]
 
-The optional package =helm-org-backlinks= provides a Helm interface for =org-backlinks=.
+The optional packages =helm-org-backlinks= and =consult-org-backlinks= provide a [[https://github.com/emacs-helm/helm][Helm]] and a [[https://github.com/minad/consult/][Consult]] interface for =org-backlinks=.
 
 This package requires [[https://github.com/alphapapa/org-ql][org-ql]].
 
@@ -58,13 +58,13 @@ Or, with use-package + straight.el:
 
 ** Usage
 
-Just run =M-x org-backlinks= or with the suggested binding =C-c z= in a Org heading.
+Just run =M-x org-backlinks= (or with the suggested binding, =C-c z=) in a Org heading. It will display all known backlinks to the current heading.
 
-Or run your preferred command: =M-x helm-org-backlinks= or =M-x consult-org-backlinks=.
+Alternatively, run your preferred command interface: =M-x helm-org-backlinks= or =M-x consult-org-backlinks=.
 
-=org-backlinks= will search the files defined by =org-backlinks-files= for the CUSTOM_ID or the ID of the current Org heading.
+=org-backlinks= will search the files defined by =org-backlinks-files= for links to the =ID= or =CUSTOM_ID= properties of the current Org heading.
 
-Set =org-backlinks-show-direct-links= to =t= to see both the direct and indirect links to other headings.
+Set =org-backlinks-show-direct-links= to =t= to see both the direct and indirect links to other headings that are present in the current heading.
 
 Other customizable variables are accessible through the customize interface:
 
@@ -117,6 +117,6 @@ To include an arbitrary link type along with the default =ID= and =CUSTOM_ID= pr
 
 - v0.3.0 :: Add support for arbitrary link types.
 
-- v0.2.0 :: Add [[https://github.com/minad/consult/][consult]] support.
+- v0.2.0 :: Add [[https://github.com/minad/consult/][Consult]] support.
 
-- v0.1.0 :: Initial concept & [[https://github.com/emacs-helm/helm][helm]] interface.
+- v0.1.0 :: Initial concept & [[https://github.com/emacs-helm/helm][Helm]] interface.
