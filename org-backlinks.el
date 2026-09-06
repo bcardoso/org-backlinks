@@ -280,7 +280,7 @@ When optional argument H is a heading, also remove it from final list."
   "Find near links *in* and *to* HEADING. Return `org-backlinks-list'.
 Near links are backlinks to HEADING or direct links present in HEADING."
   ;; Backlinks
-  (if-let ((ids (plist-get (cdr heading) :ids)))
+  (if-let* ((ids (plist-get (cdr heading) :ids)))
       (setq org-backlinks-list
             (org-backlinks-build-list (org-backlinks-find-backlinks ids)
                                       (list heading)))
@@ -380,7 +380,7 @@ Distant links are second and third order backlinks, and indirect links."
   "Command for selection Org headings with `completing-read'."
   (interactive)
   (org-backlinks-setup)
-  (when-let ((link-list (org-backlinks-list-all)))
+  (when-let* ((link-list (org-backlinks-list-all)))
     (let ((heading (completing-read "Go to heading: " link-list)))
       (org-backlinks-goto-heading (cdr (assoc heading link-list))))))
 
