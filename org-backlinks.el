@@ -1,10 +1,10 @@
 ;;; org-backlinks.el --- Org backlinks -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022-2024 Bruno Cardoso
+;; Copyright (C) 2022-2026 Bruno Cardoso
 
 ;; Author: Bruno Cardoso <cardoso.bc@gmail.com>
 ;; URL: https://github.com/bcardoso/org-backlinks
-;; Version: 0.3
+;; Version: 0.4.0
 ;; Package-Requires: ((emacs "29.1"))
 
 ;; This file is NOT part of GNU Emacs.
@@ -43,6 +43,7 @@
 ;;; Code:
 
 (require 'org-ql)
+(require 'org-ql-search)
 
 (declare-function org-ql--normalize-query "org-ql")
 
@@ -226,7 +227,7 @@ and CDR is a plist of `:marker' and `:ids'."
 ;;;;; Lists of headings
 
 (defun org-backlinks-unique (headings-list)
-  "Return a unique elements from HEADINGS-LIST."
+  "Return the unique elements from HEADINGS-LIST."
   (delete nil
           (cl-remove-duplicates headings-list ;;(apply 'append list)
                                 :test #'equal :key #'car :from-end t)))
@@ -377,13 +378,114 @@ Distant links are second and third order backlinks, and indirect links."
 
 ;;;###autoload
 (defun org-backlinks ()
-  "Command for selection Org headings with `completing-read'."
+  "Select Org headings with `completing-read'."
   (interactive)
   (org-backlinks-setup)
   (when-let* ((link-list (org-backlinks-list-all)))
     (let ((heading (completing-read "Go to heading: " link-list)))
       (org-backlinks-goto-heading (cdr (assoc heading link-list))))))
 
+
+;;;; View
+
+(defvar org-backlinks-view-buffer "*org-backlinks-view*")
+
+(defun org-backlinks-view--markers (headings)
+  "Return the markers from the list of HEADINGS."
+  (delete nil
+          (cl-remove-duplicates
+           (mapcar (lambda (e)
+                     (let ((m (plist-get (cdr e) :marker)))
+                       (and (markerp m) m)))
+                   headings)
+           :test #'equal)))
+
+(defun org-backlinks-view--buffers (headings)
+  "Return the buffers from the list of HEADINGS."
+  (delete nil
+          (cl-remove-duplicates
+           (mapcar #'marker-buffer
+                   (org-backlinks-view--markers headings))
+           :test #'equal)))
+
+(org-ql-defpred org-backlinks-view-marker-p (&rest markers)
+  "Return non-nil if current heading's marker is in MARKERS"
+  :body (let ((e (org-element-at-point-no-context))
+              (buf (current-buffer)))
+          (cl-some (lambda (m)
+                     (and (eq (marker-buffer m) buf)
+                          (= (marker-position m)
+                             (org-element-property :begin e))))
+                   markers)))
+
+(defun org-backlinks-view--marker-member (marker headings-list)
+  (member marker (org-backlinks-view--markers headings-list)))
+
+(org-super-agenda--def-auto-group near-links "near links"
+  :key-form (and (org-backlinks-view--marker-member
+                  (org-super-agenda--get-marker item)
+                  (append org-backlinks-list
+                          org-backlinks-direct-list))
+                 t)
+  :header-form "Near links")
+
+(org-super-agenda--def-auto-group distant-links "distant links"
+  :key-form (and (org-backlinks-view--marker-member
+                  (org-super-agenda--get-marker item)
+                  (append org-backlinks-second-list
+                          org-backlinks-third-list
+                          org-backlinks-indirect-list))
+                 t)
+  :header-form "Distant links")
+
+(org-super-agenda--def-auto-group backlinks "backlinks"
+  :key-form (let ((m (org-super-agenda--get-marker item)))
+              (cond ((org-backlinks-view--marker-member
+                      m org-backlinks-list)
+                     "Back")
+                    ((org-backlinks-view--marker-member
+                      m org-backlinks-second-list)
+                     "2nd order back")
+                    ((org-backlinks-view--marker-member
+                      m org-backlinks-third-list)
+                     "3rd order back")
+                    ((org-backlinks-view--marker-member
+                      m org-backlinks-direct-list)
+                     "Direct ")
+                    ((org-backlinks-view--marker-member
+                      m org-backlinks-indirect-list)
+                     "Indirect ")
+                    (t "Other ")))
+  :header-form (concat key "links"))
+
+;; TODO 2026-11-12: defcustom
+(defvar org-backlinks-view-groups
+  '((:auto-backlinks t)
+    (:auto-near-links t)
+    (:auto-distant-links t)))
+
+;;;###autoload
+(defun org-backlinks-view ()
+  "View backlinks and direct links for current Org heading ."
+  (interactive nil org-mode)
+  (let ((inhibit-message t)
+        (message-log-max nil))
+    (org-backlinks-setup))
+  (if-let* ((headings (org-backlinks-list-all))
+            (buffers (org-backlinks-view--buffers headings))
+            (markers (org-backlinks-view--markers headings))
+            (buf (get-buffer-create org-backlinks-view-buffer)))
+      (let ((org-ql-default-predicate 'heading))
+        (org-ql-search
+          buffers
+          `(org-backlinks-view-marker-p ,@markers)
+          :title "org-backlinks view"
+          :buffer org-backlinks-view-buffer
+          :super-groups org-backlinks-view-groups))
+    (user-error "No links were found")))
+
+
+;;; Provide
 
 (provide 'org-backlinks)
 
