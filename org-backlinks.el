@@ -103,12 +103,6 @@ With a numeric value, recenter putting point on screen line
 relative to the selected window. See `recenter'."
   :type 'integer)
 
-;; TODO 2026-11-12: defcustom
-(defvar org-backlinks-view-groups
-  '((:auto-backlinks t)
-    (:auto-near-links t)
-    (:auto-distant-links t)))
-
 (defface org-backlinks-file-face
   '((t (:inherit (shadow))))
   "Face for the file name part of the candidate.")
@@ -135,11 +129,6 @@ relative to the selected window. See `recenter'."
 
 
 ;;;;; Heading data
-
-;; DEPRECATED 2026-11-14: not used anymore
-(defun org-backlinks--key (marker)
-  "Return the key (BUFFER . POS) for MARKER."
-  (cons (marker-buffer marker) (marker-position marker)))
 
 (defun org-backlinks--heading-ids (&optional epom)
   "Return an alist of `org-backlinks-link-types' for EPOM."
@@ -168,7 +157,7 @@ relative to the selected window. See `recenter'."
                (:copier nil))
   marker ids olp tags direction depth)
 
-;; TODO 2026-11-14: rename to org-backlinks-heading-make
+;; TODO 2026-11-14: maybe rename to org-backlinks-heading-make
 (defun org-backlinks-heading-new (hdata &optional direction depth)
   "Return a new heading from HDATA plist, with DIRECTION and DEPTH."
   (when hdata
@@ -299,6 +288,9 @@ Return the list of new headings."
          (hdata-list (org-backlinks--query-ids ids)))
     (org-backlinks--add-headings hdata-list 'forward depth ht)))
 
+(defvar org-backlinks-collect nil
+  "Hash table from the last `org-backlinks--collect' call.")
+
 (cl-defun org-backlinks--collect (hdata &optional (backward 3) (forward 2))
   "Collect the links for HDATA plist a hash table and return it.
 BACKWARD is maximum depth for backlinks.
@@ -318,7 +310,7 @@ FORWARD is maximum depth for forward links."
       (when (and h-fwd (<= depth forward))
         (setq h-fwd (org-backlinks--collect-forward h-fwd depth ht))))
     (org-backlinks--remove-heading root ht)
-    ht))
+    (setq org-backlinks-collect ht)))
 
 (defun org-backlinks--filter (ht depth &optional direction)
   "Filter HT by DEPTH and DIRECTION."
@@ -332,16 +324,19 @@ FORWARD is maximum depth for forward links."
 
 ;;;; Completion interface
 
+(defun org-backlinks--format-group (direction depth)
+  "Return the group indicator string for DIRECTION and DEPTH."
+  (format "%s (L%s)"
+          (if (eq direction 'backward) "Backlinks" "Forward links")
+          depth))
+
 (defun org-backlinks--format (heading)
   "Return the candidate string for HEADING."
   (let* ((marker (org-backlinks-heading-marker heading))
          (tags (org-backlinks-heading-tags heading))
-         (group (format "%s (Level %s)"
-                        (if (eq (org-backlinks-heading-direction heading)
-                                'backward)
-                            "Backlinks"
-                          "Forward links")
-                        (org-backlinks-heading-depth heading)))
+         (group (org-backlinks--format-group
+                 (org-backlinks-heading-direction heading)
+                 (org-backlinks-heading-depth heading)))
          (candidate
           (concat (org-format-outline-path
                    (org-backlinks-heading-olp heading)
@@ -360,19 +355,23 @@ FORWARD is maximum depth for forward links."
   (if transform candidate
     (get-text-property 0 'org-backlinks-group candidate)))
 
+(defun org-backlinks--display-sort (candidates)
+  "Sort CANDIDATES by group."
+  (sort candidates
+        :key (lambda (s) (get-text-property 0 'org-backlinks-group s))))
+
 (defun org-backlinks--completion-table (candidates)
   "Create a completion table for CANDIDATES with group metadata."
   (lambda (string pred action)
     (if (eq action 'metadata)
-        `(metadata (group-function . org-backlinks--group-function)
-                   (display-sort-function . identity)
-                   (category . org-heading))
+        '(metadata (category . org-heading)
+                   (group-function . org-backlinks--group-function)
+                   (display-sort-function . org-backlinks--display-sort))
       (complete-with-action action candidates string pred))))
 
 (defun org-backlinks--candidates (ht)
   "Return the list of heading candidates from HT."
-  (sort (mapcar #'org-backlinks--format (hash-table-values ht))
-        :key (lambda (s) (get-text-property 0 'org-backlinks-group s))))
+  (mapcar #'org-backlinks--format (hash-table-values ht)))
 
 (defun org-backlinks--depth (&optional read-number)
   "Return the depth values from `org-backlinks-depth' or READ-NUMBER."
@@ -398,7 +397,7 @@ FORWARD is maximum depth for forward links."
 (defun org-backlinks (&optional arg)
   "Select Org headings with `completing-read'.
 With ARG, prompt for the depth of backlinks and forward links."
-  (interactive "P")
+  (interactive "P" org-mode)
   (if-let* ((minibuffer-allow-text-properties t)
             (hdata (org-backlinks-get-current-heading-data))
             (depth (org-backlinks--depth arg))
@@ -408,215 +407,56 @@ With ARG, prompt for the depth of backlinks and forward links."
                         "Go to heading: "
                         (org-backlinks--completion-table candidates) nil t)))
       (org-backlinks-goto-marker (get-text-property 0 'org-marker candidate))
+    ;; FIXME 2026-11-14: this message shows only when there are no
+    ;; backwards nor forward links; but a heading might have only forward
+    ;; links and no backlinks, or no ID property.
     (message "There are no links to this heading.")))
 
-;; TODO 2026-11-13:
-;; if no :ids -- (message "Entry has no ID.")
-;; if no links -- (message "There are no links to this entry.")
+;; TODO 2026-11-13: if no :ids -- (message "Entry has no ID.")
 
-
-;;;; Setup
-
-(defun org-backlinks-find-near-links (heading)
-  "Find near links *in* and *to* HEADING. Return `org-backlinks-list'.
-Near links are backlinks to HEADING or direct links present in HEADING."
-  ;; Backlinks
-  (if-let* ((ids (plist-get (cdr heading) :ids)))
-      (setq org-backlinks-list
-            (org-backlinks-build-list (org-backlinks--query-backlinks ids)
-                                      (list heading)))
-    (message "Entry has no ID."))
-  ;; Direct links
-  (setq org-backlinks-direct-list
-        (when org-backlinks-show-direct-links
-          (org-backlinks--unique
-           (org-backlinks--query-ids
-            (org-backlinks--heading-forward-links heading)))))
-  org-backlinks-list)
-
-(defun org-backlinks-find-distant-links (heading)
-  "Find distant links related to HEADING.
-Distant links are second and third order backlinks, and indirect links."
-  ;; Second order links
-  (setq org-backlinks-second-list
-        (when (and org-backlinks-show-second-order-backlinks
-                   org-backlinks-list)
-          (org-backlinks-build-list
-           (org-backlinks-parse org-backlinks-list)
-           org-backlinks-list
-           heading)))
-  ;; Third order links
-  (setq org-backlinks-third-list
-        (when (and org-backlinks-show-third-order-backlinks
-                   org-backlinks-second-list)
-          (org-backlinks-build-list
-           (org-backlinks-parse org-backlinks-second-list)
-           (append org-backlinks-list org-backlinks-second-list)
-           heading)))
-  ;; Indirect links
-  (setq org-backlinks-indirect-list
-        (when (and org-backlinks-show-indirect-links
-                   org-backlinks-direct-list)
-          (org-backlinks-build-list
-           (org-backlinks--unique
-            (org-backlinks--query-ids
-             (mapcan #'org-backlinks--heading-forward-links
-                     org-backlinks-direct-list)))
-           org-backlinks-direct-list
-           heading))))
-
-(defun org-backlinks-setup ()
-  "Setup `org-backlinks' lists."
-  (setq org-backlinks-list          nil
-        org-backlinks-second-list   nil
-        org-backlinks-third-list    nil
-        org-backlinks-direct-list   nil
-        org-backlinks-indirect-list nil)
-  (save-excursion
-    (if (and (derived-mode-p 'org-mode)
-             (ignore-errors (org-back-to-heading t)))
-        (let ((heading (org-backlinks--heading-data)))
-          (org-backlinks-find-near-links heading)
-          (unless org-backlinks-list
-            (message "There are no links to this entry."))
-          (org-backlinks-find-distant-links heading))
-      (message "Not an Org heading at point."))))
-
-(defun org-backlinks-setup-simple (&rest _)
-  "Simple and silient `org-backlinks-setup' for a backlink-only search."
-  (let ((inhibit-message t)
-        (message-log-max nil)
-        (org-backlinks-show-second-order-backlinks nil)
-        (org-backlinks-show-third-order-backlinks nil)
-        (org-backlinks-show-direct-links nil)
-        (org-backlinks-show-indirect-links nil))
-    (org-backlinks-setup)))
-
-(defun org-backlinks-list-all ()
-  "Return a list with all possible links."
-  (delete-dups
-   (append org-backlinks-list
-           org-backlinks-second-list
-           org-backlinks-third-list
-           org-backlinks-direct-list
-           org-backlinks-indirect-list)))
-
-(defun org-backlinks-goto-heading (heading)
-  "Go to HEADING."
-  ;; FIXME 2026-11-13: remove interactive after testing with helm
-  (interactive)
-  (let* ((marker (or (and (listp heading)
-                          (plist-get heading :marker))
-                     (get-text-property 0 'org-marker heading)))
-         (buffer (marker-buffer marker))
-         (position (marker-position marker)))
-    (org-mark-ring-push)
-    (switch-to-buffer-other-window buffer)
-    (goto-char position)
-    (org-fold-show-entry)
-    (org-fold-show-children)
-    (recenter org-backlinks-recenter)))
-
-;; ;;;###autoload
-;; (defun org-backlinks ()
-;;   "Select Org headings with `completing-read'."
-;;   (interactive)
-;;   (org-backlinks-setup)
-;;   (when-let* ((link-list (org-backlinks-list-all)))
-;;     (let ((heading (completing-read "Go to heading: " link-list)))
-;;       (org-backlinks-goto-heading (cdr (assoc heading link-list))))))
+;; TODO 2026-11-14: alternative to (defun org-backlinks-setup-simple (&rest _))
 
 
 ;;;; View
 
 (defvar org-backlinks-view-buffer "*org-backlinks-view*")
 
-(defun org-backlinks-view--markers (headings)
-  "Return the markers from the list of HEADINGS."
-  (delete nil
-          (cl-remove-duplicates
-           (mapcar (lambda (e)
-                     (let ((m (plist-get (cdr e) :marker)))
-                       (and (markerp m) m)))
-                   headings)
-           :test #'equal)))
-
-(defun org-backlinks-view--buffers (headings)
-  "Return the buffers from the list of HEADINGS."
-  (delete nil
-          (cl-remove-duplicates
-           (mapcar #'marker-buffer
-                   (org-backlinks-view--markers headings))
-           :test #'equal)))
-
 (org-ql-defpred org-backlinks-view-marker-p (&rest markers)
-  "Return non-nil if current heading's marker is in MARKERS"
-  :body (let ((e (org-element-at-point-no-context))
-              (buf (current-buffer)))
+  "Return non-nil if a heading's marker is in MARKERS"
+  :body (let* ((e (org-element-at-point))
+               (buf (current-buffer))
+               (pos (org-element-property :begin e)))
           (cl-some (lambda (m)
                      (and (eq (marker-buffer m) buf)
-                          (= (marker-position m)
-                             (org-element-property :begin e))))
+                          (eq (marker-position m) pos)))
                    markers)))
 
-(defun org-backlinks-view--marker-member (marker headings-list)
-  (member marker (org-backlinks-view--markers headings-list)))
-
-(org-super-agenda--def-auto-group near-links "near links"
-  :key-form (and (org-backlinks-view--marker-member
-                  (org-super-agenda--get-marker item)
-                  (append org-backlinks-list
-                          org-backlinks-direct-list))
-                 t)
-  :header-form "Near links")
-
-(org-super-agenda--def-auto-group distant-links "distant links"
-  :key-form (and (org-backlinks-view--marker-member
-                  (org-super-agenda--get-marker item)
-                  (append org-backlinks-second-list
-                          org-backlinks-third-list
-                          org-backlinks-indirect-list))
-                 t)
-  :header-form "Distant links")
-
-(org-super-agenda--def-auto-group backlinks "backlinks"
-  :key-form (let ((m (org-super-agenda--get-marker item)))
-              (cond ((org-backlinks-view--marker-member
-                      m org-backlinks-list)
-                     "Back")
-                    ((org-backlinks-view--marker-member
-                      m org-backlinks-second-list)
-                     "2nd order back")
-                    ((org-backlinks-view--marker-member
-                      m org-backlinks-third-list)
-                     "3rd order back")
-                    ((org-backlinks-view--marker-member
-                      m org-backlinks-direct-list)
-                     "Direct ")
-                    ((org-backlinks-view--marker-member
-                      m org-backlinks-indirect-list)
-                     "Indirect ")
-                    (t "Other ")))
-  :header-form (concat key "links"))
+(org-super-agenda--def-auto-group org-backlinks "backlinks"
+  :keyword :org-backlinks
+  :key-form (let* ((marker (org-super-agenda--get-marker item))
+                   (heading (gethash marker org-backlinks-collect)))
+              (org-backlinks--format-group
+               (org-backlinks-heading-direction heading)
+               (org-backlinks-heading-depth heading))))
 
 ;;;###autoload
-(defun org-backlinks-view ()
-  "View backlinks and direct links for current Org heading ."
-  (interactive nil org-mode)
-  (let ((inhibit-message t)
-        (message-log-max nil))
-    (org-backlinks-setup))
-  (if-let* ((headings (org-backlinks-list-all))
-            (buffers (org-backlinks-view--buffers headings))
-            (markers (org-backlinks-view--markers headings))
+(defun org-backlinks-view (&optional arg)
+  "View backlinks and direct links for current Org heading.
+With ARG, prompt for the depth of backlinks and forward links."
+  (interactive "P" org-mode)
+  (if-let* ((minibuffer-allow-text-properties t)
+            (hdata (org-backlinks-get-current-heading-data))
+            (depth (org-backlinks--depth arg))
+            (ht (org-backlinks--collect hdata (car depth) (cdr depth)))
+            (markers (hash-table-keys ht))
+            (buffers (delete-dups (mapcar #'marker-buffer markers)))
             (buf (get-buffer-create org-backlinks-view-buffer)))
       (let ((org-ql-default-predicate 'heading))
-        (org-ql-search
-          buffers
+        (org-ql-search buffers
           `(org-backlinks-view-marker-p ,@markers)
-          :title "org-backlinks view"
+          :title "Org Backlinks View"
           :buffer org-backlinks-view-buffer
-          :super-groups org-backlinks-view-groups))
+          :super-groups '((:org-backlinks t))))
     (user-error "No links were found")))
 
 
