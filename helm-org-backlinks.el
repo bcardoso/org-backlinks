@@ -1,11 +1,11 @@
 ;;; helm-org-backlinks.el --- Helm interface for Org backlinks -*- lexical-binding: t -*-
 
-;; Copyright (C) 2022-2024 Bruno Cardoso
+;; Copyright (C) 2022-2026 Bruno Cardoso
 
 ;; Author: Bruno Cardoso <cardoso.bc@gmail.com>
 ;; URL: https://github.com/bcardoso/org-backlinks
-;; Version: 0.2
-;; Package-Requires: ((emacs "29.1"))
+;; Version: 0.4.0
+;; Package-Requires: ((emacs "29.1") (helm "4.0") (org-backlinks "0.4.0"))
 
 ;; This file is NOT part of GNU Emacs.
 
@@ -26,75 +26,38 @@
 
 ;; Helm interface for Org backlinks.
 
-
 ;;; Code:
 
 (require 'org-backlinks)
 (require 'helm)
 
-
-;;;; Custom variables
-
 (defcustom helm-org-backlinks-actions
-  (helm-make-actions
-   "Go to heading" 'org-backlinks-goto-heading)
+  (helm-make-actions "Go to heading" 'org-backlinks-goto)
   "Actions for `helm-org-backlinks' sources."
   :group 'org-backlinks
   :type 'sexp)
 
-
-;;;; Sources
-
-(defmacro helm-org-backlinks-build-source (name candidates)
-  "Build Helm source NAME with CANDIDATES."
-  (declare (indent defun))
-  `(when ,candidates
-     (helm-build-sync-source ,name
-                             :action helm-org-backlinks-actions
-                             :candidates ,candidates)))
-
-(defvar helm-org-backlinks-source
-  (helm-org-backlinks-build-source "Backlinks"
-    (lambda () org-backlinks-list))
-  "Helm source for Org backlinks.")
-
-(defvar helm-org-backlinks-second-order-source
-  (helm-org-backlinks-build-source "2nd order Backlinks"
-    (lambda () org-backlinks-second-list))
-  "Helm source for second order Org backlinks.")
-
-(defvar helm-org-backlinks-third-order-source
-  (helm-org-backlinks-build-source "3rd order Backlinks"
-    (lambda () org-backlinks-third-list))
-  "Helm source for third order Org backlinks.")
-
-(defvar helm-org-backlinks-direct-source
-  (helm-org-backlinks-build-source "Direct links"
-    (lambda () org-backlinks-direct-list))
-  "Helm source for the direct links from current heading.")
-
-(defvar helm-org-backlinks-indirect-source
-  (helm-org-backlinks-build-source "Indirect links"
-    (lambda () org-backlinks-indirect-list))
-  "Helm source for the indirect links from current heading.")
-
-
-;;;; Commands
-
 ;;;###autoload
-(defun helm-org-backlinks ()
-  "Helm interface for `org-backlinks'."
-  (interactive)
-  (org-backlinks-setup)
-  (when (org-backlinks-list-all)
-    (helm :prompt "Go to heading: "
-          :truncate-lines nil
-          :sources '(helm-org-backlinks-source
-                     helm-org-backlinks-second-order-source
-                     helm-org-backlinks-third-order-source
-                     helm-org-backlinks-direct-source
-                     helm-org-backlinks-indirect-source))))
+(defun helm-org-backlinks (&optional arg)
+  "Select Org headings with `completing-read'.
+With ARG, prompt for the depth of backlinks and forward links."
+  (interactive "P" org-mode)
+  (if-let* ((hdata (org-backlinks-get-heading-data))
+            (depth (org-backlinks--depth arg))
+            (ht (org-backlinks--collect hdata (car depth) (cdr depth)))
+            (candidates (mapcar
+                         (lambda (c)
+                           (cons c (get-text-property 0 'org-marker c)))
+                         (org-backlinks--candidates ht))))
+      (helm :prompt "Go to heading: "
+            :sources (helm-build-sync-source
+                      "Backlinks"
+                      :candidates candidates
+                      :action helm-org-backlinks-actions))
+    (message "There are no links to this heading.")))
 
+
+;;; Provide
 
 (provide 'helm-org-backlinks)
 

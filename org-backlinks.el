@@ -403,10 +403,10 @@ Return the hash-table of collected headings, keyed by `org-backlinks--key', whic
           (if read-number (read-number "Forward links depth: "  fl-depth)
             fl-depth))))
 
-(defun org-backlinks-goto (candidate)
-  "Go to CANDIDATE buffer and position.
-See `org-backlinks-switch-to-buffer-fn'."
-  (if-let* ((marker (get-text-property 0 'org-marker candidate)))
+(defun org-backlinks-goto (candidate-or-marker)
+  "Go to CANDIDATE-OR-MARKER. See `org-backlinks-switch-to-buffer-fn'."
+  (if-let* ((marker (if (markerp candidate) candidate
+                      (get-text-property 0 'org-marker candidate))))
       (progn
         (org-mark-ring-push)
         (funcall org-backlinks-switch-to-buffer-fn (marker-buffer marker))
