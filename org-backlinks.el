@@ -76,23 +76,25 @@ Alternatively, this variable can be a custom list of Org files."
            (repeat :tag "Custom list of Org files" (file :must-match t))))
 
 (defcustom org-backlinks-link-types
-  '(("id"   "id:"  "ID")
-    ("file" "#"    "CUSTOM_ID"))
+  '(("id" "ID")
+    ("file" "CUSTOM_ID" "#"))
   "List of link specs used to search and extract heading ids.
-Each element is a list of (TYPE PREFIX PROPERTY):
+Each element is a list of (LINK-TYPE PROPERTY PREFIX):
 
-  TYPE      an Org link type, as in `org-link-parameters';
-  PREFIX    the string that precedes the id in a search string,
-            used to query backlinks;
-  PROPERTY  the Org heading property that stores the id, used to
-            query forward links.
+  LINK-TYPE  an Org link type, as in `org-link-parameters';
+  PROPERTY   the Org heading property that stores the id, used to
+             query forward links;
+  PREFIX     nil, or the string that precedes the id in a search,
+             used to query backlinks.
 
 Additional link types can be added, as long as their links depend on
 unique values of a heading property. Note that PREFIX is matched
 literally. Each spec should define a distinct PROPERTY."
   :type '(repeat (list (string :tag "Link type")
-                       (string :tag "Search prefix")
-                       (string :tag "Heading property"))))
+                       (string :tag "Heading property")
+                       (choice :tag "Search prefix"
+                               (string :tag "Prefix")
+                               (const :tag "None" nil)))))
 
 (defcustom org-backlinks-width 78
   "Maximum number of characters available for the Org heading path."
@@ -153,7 +155,7 @@ When APPEND is non-nil, apply `append' before the deduplication."
   "Return the alist of (PROPERTY . VALUE) links of the Org HEADING element.
 PROPERTY must be defined in `org-backlinks-link-types', which see."
   (delq nil (mapcar (lambda (spec)
-                      (when-let* ((prop (nth 2 spec))
+                      (when-let* ((prop (nth 1 spec))
                                   (value (org-element-property
                                           (intern (concat ":" (upcase prop)))
                                           heading)))
@@ -206,13 +208,13 @@ PROPERTY must be defined in `org-backlinks-link-types', which see."
        :group (org-backlinks--format-group direction depth)))))
 
 
-;;;; Queries
+;;;; Backlinks & Forward links
 
 (defun org-backlinks--search-prefix (property)
   "Return the search PREFIX for PROPERTY from `org-backlinks-link-types'."
-  (or (nth 1 (cl-find-if (lambda (spec) (equal (nth 2 spec) property))
-                         org-backlinks-link-types))
-      (user-error "No search prefix for property %S" property)))
+  (let ((spec (cl-find-if (lambda (s) (equal (nth 1 s) property))
+                          org-backlinks-link-types)))
+    (or (nth 2 spec) (concat (nth 0 spec) ":"))))
 
 (defun org-backlinks--query-backlinks (id-alist files)
   "Return the headings' data from FILES that contains links to ID-ALIST.
@@ -239,8 +241,6 @@ ID-ALIST is an alist of (PROPERTY . VALUE)."
                               `(property ,(car id) ,(cdr id)))
                             id-alist)))))
 
-;;;; Forward links
-
 (defun org-backlinks--forward-links (marker)
   "Return the list of (PROPERTY . VALUE) links present in heading at MARKER.
 Link types are the ones defined in `org-backlinks-link-types'."
@@ -253,7 +253,7 @@ Link types are the ones defined in `org-backlinks-link-types'."
          (lambda (link)
            (when-let* ((spec (assoc (org-element-property :type link)
                                     org-backlinks-link-types))
-                       (prop (nth 2 spec)))
+                       (prop (nth 1 spec)))
              (if (equal (nth 0 spec) "file")
                  (let ((option (org-element-property :search-option link)))
                    (when (and option (string-prefix-p "#" option))
@@ -341,7 +341,7 @@ Return the hash-table of collected headings, keyed by `org-backlinks--key', whic
          (tags (org-backlinks-heading-tags heading))
          (group (org-backlinks-heading-group heading))
          (sort (cons (pcase (org-backlinks-heading-direction heading)
-                       ('backward 0) (t 1))
+                       ('backward 0) (_ 1))
                      (org-backlinks-heading-depth heading)))
          (candidate
           (concat (org-format-outline-path
