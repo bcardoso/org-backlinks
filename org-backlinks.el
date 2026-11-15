@@ -101,7 +101,7 @@ literally. Each spec should define a distinct PROPERTY."
   :type 'natnum)
 
 (defcustom org-backlinks-switch-to-buffer-fn #'switch-to-buffer-other-window
-  "Switch to buffer function for `org-backlinks-goto'."
+  "Switch to buffer function used by `org-backlinks-goto'."
   :type 'function)
 
 (defcustom org-backlinks-recenter nil
@@ -171,14 +171,14 @@ PROPERTY must be defined in `org-backlinks-link-types', which see."
        :olp ,(org-get-outline-path t t)
        :tags ,(org-element-property :tags heading))))
 
-(defun org-backlinks-get-current-heading-data ()
-  "Return the `org-backlinks--heading-data' for the current Org heading."
-  (if (and (derived-mode-p 'org-mode)
-           (not (org-before-first-heading-p)))
+(defun org-backlinks-get-current-heading-data (&optional noerror)
+  "Return the `org-backlinks--heading-data' for the current Org heading.
+When NOERROR is non-nil, don't signal an error."
+  (if (and (derived-mode-p 'org-mode) (not (org-before-first-heading-p)))
       (save-excursion
         (org-back-to-heading t)
         (org-backlinks--heading-data))
-    (user-error "No Org heading at point")))
+    (unless noerror (user-error "No Org heading at point"))))
 
 (cl-defstruct (org-backlinks-heading
                (:constructor org-backlinks-heading--make)
@@ -391,14 +391,18 @@ Return the hash-table of collected headings, keyed by `org-backlinks--key', whic
           (if read-number (read-number "Forward links depth: "  fl-depth)
             fl-depth))))
 
-(defun org-backlinks-goto (marker)
-  "Go to MARKER."
-  (org-mark-ring-push)
-  (funcall org-backlinks-switch-to-buffer-fn (marker-buffer marker))
-  (goto-char (marker-position marker))
-  (org-fold-show-entry)
-  (org-fold-show-children)
-  (recenter org-backlinks-recenter))
+(defun org-backlinks-goto (candidate)
+  "Go to CANDIDATE buffer and position.
+See `org-backlinks-switch-to-buffer-fn'."
+  (if-let* ((marker (get-text-property 0 'org-marker candidate)))
+      (progn
+        (org-mark-ring-push)
+        (funcall org-backlinks-switch-to-buffer-fn (marker-buffer marker))
+        (goto-char (marker-position marker))
+        (org-fold-show-entry)
+        (org-fold-show-children)
+        (recenter org-backlinks-recenter))
+    (user-error "No marker found for %S" candidate)))
 
 ;;;###autoload
 (defun org-backlinks (&optional arg)
@@ -415,9 +419,8 @@ With ARG, prompt for the depth of backlinks and forward links."
                               "Go to heading: "
                             "Go to heading (no ID; forward links only): ")
                           (org-backlinks--completion-table candidates)
-                          nil t))
-              (marker (get-text-property 0 'org-marker candidate)))
-        (org-backlinks-goto marker)
+                          nil t)))
+        (org-backlinks-goto candidate)
       (message "There are no links to this heading."))))
 
 
@@ -456,7 +459,8 @@ With ARG, prompt for the depth of backlinks and forward links."
         (org-ql-search
           buffers
           `(org-backlinks-view-p ,org-backlinks-view-ht)
-          :title "Org Backlinks View"
+          :title (concat "Org Backlinks for "
+                         (car (last (plist-get hdata :olp))))
           :buffer org-backlinks-view-buffer
           :super-groups '((:org-backlinks t))))
     (user-error "No links were found")))
@@ -476,9 +480,9 @@ With ARG, prompt for the depth of backlinks and forward links."
 ;;;###autoload
 (defun org-backlinks-simple ()
   "Return the list of backlinks candidates for the current heading."
-  (if-let* ((hdata (org-backlinks-get-current-heading-data))
-            (ht (org-backlinks--collect hdata 1 0)))
-      (org-backlinks--candidates ht)))
+  (when-let* ((hdata (org-backlinks-get-current-heading-data 'noerror))
+              (ht (org-backlinks--collect hdata 1 0)))
+    (org-backlinks--candidates ht)))
 
 
 ;;; Provide
