@@ -171,7 +171,7 @@ PROPERTY must be defined in `org-backlinks-link-types', which see."
        :olp ,(org-get-outline-path t t)
        :tags ,(org-element-property :tags heading))))
 
-(defun org-backlinks-get-current-heading-data (&optional noerror)
+(defun org-backlinks-get-heading-data (&optional noerror)
   "Return the `org-backlinks--heading-data' for the current Org heading.
 When NOERROR is non-nil, don't signal an error."
   (if (and (derived-mode-p 'org-mode) (not (org-before-first-heading-p)))
@@ -410,7 +410,7 @@ See `org-backlinks-switch-to-buffer-fn'."
 With ARG, prompt for the depth of backlinks and forward links."
   (interactive "P" org-mode)
   (let ((minibuffer-allow-text-properties t))
-    (if-let* ((hdata (org-backlinks-get-current-heading-data))
+    (if-let* ((hdata (org-backlinks-get-heading-data))
               (depth (org-backlinks--depth arg))
               (ht (org-backlinks--collect hdata (car depth) (cdr depth)))
               (candidates (org-backlinks--candidates ht))
@@ -422,6 +422,56 @@ With ARG, prompt for the depth of backlinks and forward links."
                           nil t)))
         (org-backlinks-goto candidate)
       (message "There are no links to this heading."))))
+
+
+;;;; Query
+
+(defun org-backlinks--filter (ht &optional direction depth)
+  "Filter HT by DIRECTION and DEPTH."
+  (when (hash-table-p ht)
+    (let (result)
+      (maphash (lambda (_ h)
+                 (and (or (eq (org-backlinks-heading-direction h) direction)
+                          (not direction))
+                      (or (eq (org-backlinks-heading-depth h) depth)
+                          (not depth))
+                      (push h result)))
+               ht)
+      (nreverse result))))
+
+(defmacro org-backlinks--with-orig-buffer (&rest body)
+  "Evaluate BODY in the buffer from which the current command was invoked.
+When the minibuffer is active, evaluate body in the original buffer.
+This allows calling `org-backlinks-query' from a custom `consult' source, since its `:items' function is called from the minibuffer.
+When the minibuffer is not active, use the current buffer instead."
+  `(let ((buf (if (minibuffer-window-active-p (minibuffer-window))
+                  (window-buffer (minibuffer-selected-window))
+                (current-buffer))))
+     (with-current-buffer buf ,@body)))
+
+;;;###autoload
+(defun org-backlinks-query (&optional hdata direction depth formatted)
+  "Return the list of headings relative to the current heading or HDATA.
+HDATA is the heading plist returned by `org-backlinks-get-heading-data'.
+When DIRECTION is \\='backward or \\='forward, return only the headings
+from that direction; when nil, return headings from both directions.
+When DEPTH is a number, return only the headings at that depth.
+When FORMATTED is non-nil, format headings with `org-backlinks--format'."
+  (unless (memq direction '(nil backward forward))
+    (user-error "Invalid direction: %S" direction))
+  (when-let* ((hdata (or hdata
+                         (org-backlinks--with-orig-buffer
+                          (org-backlinks-get-heading-data 'noerror))))
+              (depth (or depth 1))
+              (backward (if (or (null direction) (eq direction 'backward))
+                            depth 0))
+              (forward (if (or (null direction) (eq direction 'forward))
+                           depth 0))
+              (ht (org-backlinks--collect hdata backward forward))
+              (headings (org-backlinks--filter ht direction depth)))
+    (if formatted
+        (mapcar #'org-backlinks--format headings)
+      headings)))
 
 
 ;;;; View
@@ -450,7 +500,7 @@ HT is keyed by `org-backlinks--key'."
   "View backlinks and direct links for current Org heading.
 With ARG, prompt for the depth of backlinks and forward links."
   (interactive "P" org-mode)
-  (if-let* ((hdata (org-backlinks-get-current-heading-data))
+  (if-let* ((hdata (org-backlinks-get-heading-data))
             (depth (org-backlinks--depth arg))
             (ht (org-backlinks--collect hdata (car depth) (cdr depth)))
             (buffers (org-backlinks--unique #'car (hash-table-keys ht))))
@@ -466,23 +516,16 @@ With ARG, prompt for the depth of backlinks and forward links."
     (user-error "No links were found")))
 
 
-;;;; Convenience
+;;;; Consult source
 
-(defun org-backlinks--filter (ht depth &optional direction)
-  "Filter HT by DEPTH and DIRECTION."
-  (when (hash-table-p ht)
-    (seq-filter (lambda (h)
-                  (and (eq (org-backlinks-heading-depth h) depth)
-                       (or (eq (org-backlinks-heading-direction h) direction)
-                           (not direction))))
-                (hash-table-values ht))))
-
-;;;###autoload
-(defun org-backlinks-simple ()
-  "Return the list of backlinks candidates for the current heading."
-  (when-let* ((hdata (org-backlinks-get-current-heading-data 'noerror))
-              (ht (org-backlinks--collect hdata 1 0)))
-    (org-backlinks--candidates ht)))
+(defvar org-backlinks-consult-source
+  (list :name      "Backlinks"
+        :prompt    "Go to heading: "
+        :narrow    ?l
+        :category  'org-heading
+        :items     (lambda () (org-backlinks-query nil 'backward 1 t))
+        :action    #'org-backlinks-goto)
+  "Consult source for the level-1 backlinks of the Org heading at point.")
 
 
 ;;; Provide
