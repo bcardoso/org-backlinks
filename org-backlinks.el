@@ -77,7 +77,8 @@ Alternatively, this variable can be a custom list of Org files."
 
 (defcustom org-backlinks-link-types
   '(("id" "ID")
-    ("file" "CUSTOM_ID" "#"))
+    ("file" "CUSTOM_ID" "#")
+    ("cite" "CUSTOM_ID" "@"))
   "List of link specs used to search and extract heading ids.
 Each element is a list of (LINK-TYPE PROPERTY PREFIX):
 
@@ -154,13 +155,12 @@ When APPEND is non-nil, apply `append' before the deduplication."
 (defun org-backlinks--heading-ids (heading)
   "Return the alist of (PROPERTY . VALUE) links of the Org HEADING element.
 PROPERTY must be defined in `org-backlinks-link-types', which see."
-  (delq nil (mapcar (lambda (spec)
-                      (when-let* ((prop (nth 1 spec))
-                                  (value (org-element-property
+  (delq nil (mapcar (lambda (prop)
+                      (when-let* ((value (org-element-property
                                           (intern (concat ":" (upcase prop)))
                                           heading)))
                         `(,prop . ,value)))
-                    org-backlinks-link-types)))
+                    (delete-dups (mapcar #'cadr org-backlinks-link-types)))))
 
 (defun org-backlinks--heading-data (&optional pom)
   "Return the plist data of the Org heading at POM or point."
@@ -210,25 +210,31 @@ When NOERROR is non-nil, don't signal an error."
 
 ;;;; Backlinks & Forward links
 
-(defun org-backlinks--search-prefix (property)
-  "Return the search PREFIX for PROPERTY from `org-backlinks-link-types'."
-  (let ((spec (cl-find-if (lambda (s) (equal (nth 1 s) property))
-                          org-backlinks-link-types)))
-    (or (nth 2 spec) (concat (nth 0 spec) ":"))))
+(defun org-backlinks--search-strings (id-alist)
+  "Return the list of search strings for ID-ALIST.
+ID-ALIST is an alist of (PROPERTY . VALUE).
+PROPERTY must be defined in `org-backlinks-link-types', which see..
+The search strings are used by `org-backlinks--query-backlinks'."
+  (mapcan (lambda (prop-value)
+            (let* ((specs (seq-filter (lambda (s)
+                                        (equal (nth 1 s) (car prop-value)))
+                                      org-backlinks-link-types)))
+              (mapcar (lambda (spec)
+                        (format "%s%s"
+                                (or (nth 2 spec) (concat (nth 0 spec) ":"))
+                                (cdr prop-value)))
+                      specs)))
+          id-alist))
 
 (defun org-backlinks--query-backlinks (id-alist files)
-  "Return the headings' data from FILES that contains links to ID-ALIST.
+  "Return the headings' data from FILES that contain links to ID-ALIST.
 ID-ALIST is an alist of (PROPERTY . VALUE)."
   (when id-alist
-    (org-ql-query
-      :select #'org-backlinks--heading-data
-      :from files
-      :where
-      `(or ,@(mapcar
-              (lambda (id)
-                `(rifle ,(concat (org-backlinks--search-prefix (car id))
-                                 (cdr id))))
-              id-alist)))))
+    (let ((strings (org-backlinks--search-strings id-alist)))
+      (org-ql-query
+        :select #'org-backlinks--heading-data
+        :from files
+        :where `(or ,@(mapcar (lambda (s) `(rifle ,s)) strings))))))
 
 (defun org-backlinks--query-ids (id-alist files)
   "Return the Org headings' data from FILES whose properties match ID-ALIST.
@@ -237,8 +243,7 @@ ID-ALIST is an alist of (PROPERTY . VALUE)."
     (org-ql-query
       :select #'org-backlinks--heading-data
       :from files
-      :where `(or ,@(mapcar (lambda (id)
-                              `(property ,(car id) ,(cdr id)))
+      :where `(or ,@(mapcar (lambda (id) `(property ,(car id) ,(cdr id)))
                             id-alist)))))
 
 (defun org-backlinks--forward-links (marker)
@@ -249,16 +254,23 @@ Link types are the ones defined in `org-backlinks-link-types'."
       (org-narrow-to-subtree)
       (delq
        nil
-       (org-element-map (org-element-parse-buffer) 'link
-         (lambda (link)
-           (when-let* ((spec (assoc (org-element-property :type link)
+       (org-element-map (org-element-parse-buffer)
+           '(link citation-reference)
+         (lambda (e)
+           (when-let* ((spec (assoc (or (org-element-property :type e)
+                                        (and (org-element-property :key e)
+                                             "cite"))
                                     org-backlinks-link-types))
+                       (type (nth 0 spec))
                        (prop (nth 1 spec)))
-             (if (equal (nth 0 spec) "file")
-                 (let ((option (org-element-property :search-option link)))
-                   (when (and option (string-prefix-p "#" option))
-                     `(,prop . ,(substring option 1))))
-               `(,prop . ,(org-element-property :path link))))))))))
+             (cond ((equal type "file")
+                    (let ((option (org-element-property :search-option e)))
+                      (when (and option (string-prefix-p "#" option))
+                        `(,prop . ,(substring option 1)))))
+                   ((equal type "cite")
+                    `(,prop . ,(org-element-property :key e)))
+                   (t
+                    `(,prop . ,(org-element-property :path e)))))))))))
 
 
 ;;;; Collect links relative to a heading
