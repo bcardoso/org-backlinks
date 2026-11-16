@@ -329,7 +329,8 @@ tree is then expanded from the root, up to FORWARD levels. Headings
 reachable in both directions are therefore collected as backlinks, and
 their forward expansion is not followed.
 
-Return the hash-table of collected headings, keyed by `org-backlinks--key', which is cons of (BUFFER . POSITION)."
+Return the hash-table of headings, keyed by `org-backlinks--key', which
+is cons of (BUFFER . POSITION)."
   (let* ((ht (make-hash-table :test #'equal))
          (files (org-backlinks-files))
          (root (org-backlinks--add-heading hdata nil 0 ht)))
@@ -403,8 +404,8 @@ Return the hash-table of collected headings, keyed by `org-backlinks--key', whic
           (if read-number (read-number "Forward links depth: "  fl-depth)
             fl-depth))))
 
-(defun org-backlinks-goto (candidate-or-marker)
-  "Go to CANDIDATE-OR-MARKER. See `org-backlinks-switch-to-buffer-fn'."
+(defun org-backlinks-goto (candidate)
+  "Go to CANDIDATE localtion. See `org-backlinks-switch-to-buffer-fn'."
   (if-let* ((marker (if (markerp candidate) candidate
                       (get-text-property 0 'org-marker candidate))))
       (progn
@@ -454,8 +455,9 @@ With ARG, prompt for the depth of backlinks and forward links."
 (defmacro org-backlinks--with-orig-buffer (&rest body)
   "Evaluate BODY in the buffer from which the current command was invoked.
 When the minibuffer is active, evaluate body in the original buffer.
-This allows calling `org-backlinks-query' from a custom `consult' source, since its `:items' function is called from the minibuffer.
-When the minibuffer is not active, use the current buffer instead."
+This allows calling `org-backlinks-query' from a custom `consult'
+source, since its `:items' function is called from the minibuffer. When
+the minibuffer is not active, use the current buffer instead."
   `(let ((buf (if (minibuffer-window-active-p (minibuffer-window))
                   (window-buffer (minibuffer-selected-window))
                 (current-buffer))))
