@@ -8,7 +8,7 @@ An interface for searching backlinks to Org headings.
 
 This package aims to provide a sense of context when searching for links /to/ and /from/ the current note.
 
-[[file:assets/org-backlinks.png]]
+[[file:assets/diagram.png]]
 
 Backlinks are the Org headings that have links to the current heading at point. It's possible to search for backlinks at any arbitrary depth (backlinks of backlinks, and so on).
 
@@ -16,7 +16,7 @@ Forward links are the links present in the current heading; they can also be fol
 
 By default, =org-backlinks= searches for three levels of backlinks, and two of forward links.
 
-[[file:assets/diagram.png]]
+[[file:assets/org-backlinks.png]]
 
 
 ** Installation
