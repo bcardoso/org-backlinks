@@ -27,18 +27,15 @@
 ;; An interface for searching backlinks to Org headings.
 
 ;; This package aims to provide a sense of context when searching for
-;; links *to* and *from* the current heading.
+;; links *to* and *from* the current Org heading.
 
-;; Backlinks are the Org headings that have links to the current
-;; Org heading at point.  Second order backlinks are the backlinks to
-;; each of the current heading's backlinks.  Third order backlinks
-;; are the same but for the second order ones.
+;; Backlinks are the Org headings that have links to the current heading at
+;; point. It's possible to search for backlinks at any arbitrary depth
+;; (backlinks of backlinks, and so on).
 
-;; Optionally, it can also show the direct and indirect links of a note.
-
-;; Direct links are the links to other headings present in the current
-;; heading.  Indirect links are the direct links present in those headings.
-
+;; Forward links are the links present in the current heading; they can
+;; also be followed to further levels (the links of those headings, and so
+;; on).
 
 ;;; Code:
 
