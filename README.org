@@ -8,93 +8,77 @@ An interface for searching backlinks to Org headings.
 
 This package aims to provide a sense of context when searching for links /to/ and /from/ the current note.
 
-[[file:screenshot.png]]
+[[file:assets/org-backlinks.png]]
 
-Backlinks are the Org headings that have links to the current Org heading at point. Second order backlinks are the backlinks to each of the current heading's backlinks. Third order backlinks are the same but for the second order ones.
+Backlinks are the Org headings that have links to the current heading at point. It's possible to search for backlinks at any arbitrary depth (backlinks of backlinks, and so on).
 
-Optionally, it can also show the direct and indirect links of a note.
+Forward links are the links present in the current heading; they can also be followed to further levels (the links of those headings, and so on).
 
-Direct links are the links to other headings present in the current heading. Indirect links are the direct links present in those headings.
+By default, =org-backlinks= searches for three levels of backlinks, and two of forward links.
 
-[[file:diagram.png]]
-
-The optional packages =helm-org-backlinks= and =consult-org-backlinks= provide a [[https://github.com/emacs-helm/helm][Helm]] and a [[https://github.com/minad/consult/][Consult]] interface for =org-backlinks=.
-
-This package requires [[https://github.com/alphapapa/org-ql][org-ql]].
+[[file:assets/diagram.png]]
 
 
 ** Installation
+
+This package requires Emacs 29.1+ and [[https://github.com/alphapapa/org-ql][org-ql]].
+
+*** Manual
 
 Clone this repo and add it to your =load-path=:
 
 #+begin_src emacs-lisp
 (add-to-list 'load-path "/path/to/org-backlinks")
 (require 'org-backlinks)
-(require 'helm-org-backlinks)    ; optional Helm interface
-(require 'consult-org-backlinks) ; optional Consult interface
+(require 'helm-org-backlinks)    ; Optional Helm interface
 #+end_src
 
-Or, with use-package + straight.el:
+*** With straight.el
 
 #+begin_src emacs-lisp
 (use-package org-backlinks
   :straight (org-backlinks :host github :repo "bcardoso/org-backlinks"
                            :files ("org-backlinks.el"))
-  :bind ("C-c z" . org-backlinks))
+  :bind (("C-c z" . org-backlinks)
+         ("C-c Z" . org-backlinks-view)))
 
-;; optional Helm interface
+;; Optional Helm interface
 (use-package helm-org-backlinks
   :straight (helm-org-backlinks :host github :repo "bcardoso/org-backlinks"
                                 :files ("helm-org-backlinks.el"))
   :bind ("C-c z" . helm-org-backlinks))
-
-;; optional Consult interface
-(use-package consult-org-backlinks
-  :straight (consult-org-backlinks :host github :repo "bcardoso/org-backlinks"
-                                   :files ("consult-org-backlinks.el"))
-  :bind ("C-c z" . consult-org-backlinks))
 #+end_src
 
+*** With elpaca
+
+#+begin_src emacs-lisp
+(use-package org-backlinks
+  :ensure ( :host github :repo "bcardoso/org-backlinks"
+            :files ("org-backlinks.el"))
+  :bind (("C-c z" . org-backlinks)
+         ("C-c Z" . org-backlinks-view)))
+#+end_src
 
 ** Usage
 
-Just run =M-x org-backlinks= (or with the suggested binding, =C-c z=) in a Org heading. It will display all known backlinks to the current heading.
+Just run =M-x org-backlinks= in an Org heading. The completion interface will display the backlinks and forward links of the current heading, grouped by direction and depth. With =C-u=, =org-backlinks= prompts for both depths.
 
-Alternatively, run your preferred command interface: =M-x helm-org-backlinks= or =M-x consult-org-backlinks=.
+=org-backlinks= will search the files defined in =org-backlinks-scope= for links to the =ID= or =CUSTOM_ID= properties of the current Org heading. The default search depths are defined in =org-backlinks-depth=.
 
-=org-backlinks= will search the files defined by =org-backlinks-files= for links to the =ID= or =CUSTOM_ID= properties of the current Org heading.
+Other customizable variables are accessible through =M-x customize-group RET org-backlinks=.
 
-Set =org-backlinks-show-direct-links= to =t= to see both the direct and indirect links to other headings that are present in the current heading.
+Alternatively, command =org-backlinks-view= presents the relevant links to/from a Org heading in a [[https://github.com/alphapapa/org-ql][org-ql]] view buffer.
 
-Other customizable variables are accessible through the customize interface:
-
-- =M-x customize-group RET org-backlinks=.
-
-
-** Integration
-
-=org-backlinks= sources can be easily integrated into other Helm or Consult commands.
-
-For example, this is how I integrate a simple backlink source into [[https://github.com/bcardoso/org-hop][org-hop]], my all-purpose Org heading hopping interface:
-
-#+begin_src emacs-lisp
-;; Consult interface
-(require 'consult-org-backlinks)
-(advice-add 'consult-org-hop :before #'org-backlinks-setup-simple)
-(add-to-list 'consult-org-hop-sources 'consult-org-backlinks-source)
-
-;; Helm inferface
-(require 'helm-org-backlinks)
-(advice-add 'helm-org-hop :before #'org-backlinks-setup-simple)
-(add-to-list 'helm-org-hop-default-sources 'helm-org-backlinks-source)
-#+end_src
+[[file:assets/org-backlinks-view.png]]
 
 
 ** Arbitrary link types
 
-By default, both =ID= and =CUSTOM_ID= properties are considered when searching for backlinks.
+By default, =id:= links are matched against the =ID= property, =file:= links with a =#custom-id= search option against =CUSTOM_ID=, and =cite:= references (which are not actual links) against =CUSTOM_ID= as well.
 
-Now suppose you have defined a custom link parameter (say, =my=) that depends on the values of an specific Org property (say, =MY_ID=).
+See the docstring of =org-backlinks-link-types= for more details.
+
+Now suppose you have defined a custom link parameter (say, =my=) that depends on the values of a specific Org property (say, =MY_ID=).
 
 #+begin_src emacs-lisp
 (org-link-set-parameters "my" :follow #'my-follow-function)
@@ -102,18 +86,31 @@ Now suppose you have defined a custom link parameter (say, =my=) that depends on
 
 This way, for example, following a link like =my:123= would lead you to an Org heading where the value of property =MY_ID= is "123".
 
-(The actual implementation of such "follow function" is irrelevant here, as it will not be called by =org-backlinks=. The important part is that the new link type must be set properly, so direct links can be found with =org-element-map=.)
+(Note that the implementation of "my-follow-function" is irrelevant, as it is not called by =org-backlinks=. What matters is that the link type is registered, so =org-element-map= can find its links.)
 
-With enough links of this type among your notes, it might be useful to see the structure of backlinks and other indirect links for the current heading /as if/ they were standard Org links.
+With enough links among your notes, it might be useful to see the structure of backlinks and other indirect links for the current heading. This way, custom links are treated like =id:= links in both backlink and forward-link searches.
 
-To include an arbitrary link type along with the default =ID= and =CUSTOM_ID= properties, just add it to =org-backlinks-link-types=:
+To include an arbitrary link type, along with the default =ID= and =CUSTOM_ID= properties, just add a definition to =org-backlinks-link-types=:
 
 #+begin_src emacs-lisp
-(add-to-list 'org-backlinks-link-types (cons "my" "MY_ID"))
+(add-to-list 'org-backlinks-link-types '("my" "MY_ID"))
 #+end_src
 
 
+** Integrations
+
+The main =org-backlinks= command is a completing-read interface that integrates well with [[https://github.com/minad/vertico][Vertico]] and [[https://github.com/minad/consult/][Consult]], and the default [[https://github.com/oantolin/embark][Embark]] actions for Org headings also work on the candidates list.
+
+A simple source for level-1 backlinks is already defined in =org-backlinks-consult-source=, so it can be added into other Consult commands.
+
+The optional package =helm-org-backlinks= provides an alternative [[https://github.com/emacs-helm/helm][Helm]] interface for =org-backlinks=.
+
+
 ** Changelog
+
+- v0.4.0 :: Complete refactor, support for citation references, and =org-backlinks-view= command.
+  - There are many breaking changes, so existing configurations must be reviewed.
+  - The previously optional package =consult-org-backlinks= is no longer needed and was removed from this version. The same functionality is now available in the main =org-backlinks= command.
 
 - v0.3.0 :: Add support for arbitrary link types.
 
