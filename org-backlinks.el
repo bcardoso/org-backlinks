@@ -493,7 +493,7 @@ When FORMATTED is non-nil, format headings with `org-backlinks--format'."
   "Hash table of headings from the last call of `org-backlinks--collect'.")
 
 (org-ql-defpred org-backlinks-view-p (ht)
-  "Return non-nil if the heading at point is in hash-table HT-NAME.
+  "Return non-nil if the heading at point is in the HT hash-table.
 HT is keyed by `org-backlinks--key'."
   :body (gethash (cons (current-buffer)
                        (org-element-property
