@@ -191,7 +191,6 @@ When NOERROR is non-nil, don't signal an error."
           (if (eq direction 'backward) "Backlinks" "Forward links")
           depth))
 
-;; TODO 2026-11-14: maybe rename to org-backlinks-heading-make
 (defun org-backlinks-heading-new (hdata direction depth)
   "Return a new heading from HDATA plist, with DIRECTION and DEPTH."
   (when hdata
@@ -213,7 +212,7 @@ When NOERROR is non-nil, don't signal an error."
 (defun org-backlinks--search-strings (id-alist)
   "Return the list of search strings for ID-ALIST.
 ID-ALIST is an alist of (PROPERTY . VALUE).
-PROPERTY must be defined in `org-backlinks-link-types', which see..
+PROPERTY must be defined in `org-backlinks-link-types', which see.
 The search strings are used by `org-backlinks--query-backlinks'."
   (mapcan (lambda (prop-value)
             (let* ((specs (seq-filter (lambda (s)
